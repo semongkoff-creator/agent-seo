@@ -19,6 +19,10 @@ Prototype HTML reference + upcoming Next.js app foundation.
 7. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
 8. Start development with `pnpm dev`.
 
+Admin bootstrap:
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_FULL_NAME` can be set locally for the helper script at `scripts/seed-admin.mjs`.
+- The script creates or updates the Supabase auth user and mirrors it into the `users` table with the admin role.
+
 ## Scripts
 
 - `pnpm dev`

@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 async function main() {
   const url = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminFullName = process.env.ADMIN_FULL_NAME ?? 'Admin';
 
   if (!url || !serviceKey) {
     throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
@@ -17,6 +20,70 @@ async function main() {
     }
   });
 
+  if (adminEmail && adminPassword) {
+    const { data: userPage, error: listError } = await client.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    });
+
+    if (listError) {
+      throw listError;
+    }
+
+    const existingAdmin = userPage.users.find((user) => user.email?.toLowerCase() === adminEmail.toLowerCase());
+
+    if (existingAdmin) {
+      const { error: updateError } = await client.auth.admin.updateUserById(existingAdmin.id, {
+        password: adminPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: adminFullName
+        }
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      await client.from('users').upsert({
+        id: existingAdmin.id,
+        email: adminEmail,
+        full_name: adminFullName,
+        role: 'admin',
+        timezone: 'Asia/Jakarta'
+      });
+
+      console.log('Updated admin auth user and profile for', adminEmail);
+    } else {
+      const { data: createdUser, error: createError } = await client.auth.admin.createUser({
+        email: adminEmail,
+        password: adminPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: adminFullName
+        }
+      });
+
+      if (createError) {
+        throw createError;
+      }
+
+      if (!createdUser.user) {
+        throw new Error('Failed to create admin auth user');
+      }
+
+      await client.from('users').upsert({
+        id: createdUser.user.id,
+        email: adminEmail,
+        full_name: adminFullName,
+        role: 'admin',
+        timezone: 'Asia/Jakarta'
+      });
+
+      console.log('Created admin auth user and profile for', adminEmail);
+    }
+  }
+
   const userId = randomUUID();
 
   await client.from('users').upsert({
@@ -24,7 +91,6 @@ async function main() {
     email: 'demo@seo-agent.test',
     full_name: 'Demo User',
     role: 'owner',
-    plan: 'growth',
     timezone: 'Asia/Jakarta'
   });
 
