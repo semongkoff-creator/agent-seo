@@ -1,0 +1,172 @@
+{
+  "name": "SEO Agent - Identify Problem",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo-agent/identify-problem",
+        "responseMode": "responseNode"
+      },
+      "id": "identify-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst payload = input.body ?? input.payload ?? input;\nconst appSignature = $json[\"headers\"]?.[\"x-app-signature\"] ?? input.headers?.[\"x-app-signature\"] ?? null;\n\nreturn [{\n  json: {\n    ...input,\n    payload,\n    app_signature: appSignature,\n    job_id: input.job_id ?? payload.job_id ?? payload?.job?.id,\n    project_id: input.project_id ?? payload.project_id ?? payload?.project?.id,\n    diagnosis_id: input.diagnosis_id ?? payload.diagnosis_id ?? payload?.diagnosis?.id,\n    callback_url: input.callback_url ?? payload.callback_url,\n    identify_drafts: input.identify_drafts ?? payload.identify_drafts ?? payload?.identify?.drafts ?? [],\n    identify_merged: input.identify_merged ?? payload.identify_merged ?? payload?.identify?.merged ?? {}\n  }\n}];"
+      },
+      "id": "normalize-payload",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nreturn [{\n  json: {\n    ...input,\n    diagnosis_result: {\n      primary_problem_type: 'qualified_traffic',\n      secondary_problem_type: null,\n      severity: 'high',\n      confidence_score: 82,\n      diagnosis_summary: 'Traffic intent is present but the content-to-query match is still weak.',\n      root_cause: 'The site has useful content, but the pages are not aligned to a single search intent cluster yet.',\n      evidence: [\n        { label: 'Draft count', value: String((input.identify_drafts || []).length) },\n        { label: 'Website stage', value: input.identify_merged?.website_stage ?? 'existing' }\n      ],\n      business_impact: {\n        summary: 'Organic growth is being limited by intent mismatch and weak prioritization.',\n        metrics: []\n      },\n      campaign_readiness: 'ready_with_cleanup',\n      recommended_next_step: 'Define a target cluster and build one page per intent group.',\n      objective_direction: 'qualified_traffic',\n      not_recommended_actions: ['Publish more generic content without a cluster plan'],\n      warnings: ['Review internal linking before scaling content volume'],\n      raw_llm_output: {\n        source: 'n8n-template',\n        note: 'Replace this node with your AI or rules-based analysis.'\n      },\n      model_used: 'n8n-template'\n    }\n  }\n}];"
+      },
+      "id": "build-diagnosis-result",
+      "name": "Build Diagnosis Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-n8n-signature",
+              "value": "={{ $json.n8n_signature }}"
+            },
+            {
+              "name": "x-n8n-timestamp",
+              "value": "={{ $json.n8n_timestamp }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  status: 'completed',\n  result: $json.diagnosis_result\n} }}"
+      },
+      "id": "callback-backend",
+      "name": "Callback to Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = JSON.stringify($input.first().json);\nconst timestamp = Math.floor(Date.now() / 1000);\nconst secret = $env.APP_WEBHOOK_SECRET;\nconst crypto = require('crypto');\nconst signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    n8n_timestamp: String(timestamp),\n    n8n_signature: signature\n  }\n}];"
+      },
+      "id": "sign-callback",
+      "name": "Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  ok: true,\n  received: true,\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Build Diagnosis Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Diagnosis Result": {
+      "main": [
+        [
+          {
+            "node": "Sign Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Callback": {
+      "main": [
+        [
+          {
+            "node": "Callback to Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback to Website": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

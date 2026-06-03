@@ -1,0 +1,172 @@
+{
+  "name": "SEO Agent - Define Objective",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo-agent/define-objective",
+        "responseMode": "responseNode"
+      },
+      "id": "objective-webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst payload = input.body ?? input.payload ?? input;\n\nreturn [{\n  json: {\n    ...input,\n    payload,\n    job_id: input.job_id ?? payload.job_id ?? payload?.job?.id,\n    project_id: input.project_id ?? payload.project_id ?? payload?.project?.id,\n    diagnosis_id: input.diagnosis_id ?? payload.diagnosis_id ?? payload?.diagnosis?.id,\n    objective_id: input.objective_id ?? payload.objective_id ?? payload?.objective?.id,\n    callback_url: input.callback_url ?? payload.callback_url,\n    diagnosis_result: input.diagnosis_result ?? payload.diagnosis_result ?? payload?.diagnosisResult ?? {},\n    objective_input: input.objective_input ?? payload.objective_input ?? payload?.objectiveInput ?? {}\n  }\n}];"
+      },
+      "id": "normalize-payload",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nreturn [{\n  json: {\n    ...input,\n    objective_result: {\n      objective_type: 'mixed',\n      smart_objective: 'Increase qualified organic traffic by improving the match between content clusters and search intent.',\n      business_goal_alignment: 'Supports traffic growth and lead generation',\n      input_metrics: input.objective_input,\n      output_metrics: {\n        target_traffic_growth: 30,\n        target_conversion_growth: 15\n      },\n      outcome_metrics: {},\n      baseline: input.objective_input?.seo_baseline ?? {},\n      target: {\n        monthly_organic_traffic: 10000,\n        conversion_rate: 2.5\n      },\n      time_period: input.objective_input?.business_goal?.target_period ?? '6 months',\n      achievability_score: 'moderate',\n      achievability_percent: 68,\n      risk_notes: ['Content production capacity should remain consistent'],\n      reasoning: 'This objective follows from the current diagnosis and available baseline data.',\n      next_step: 'Break the target into content, technical, and authority workstreams.',\n      raw_llm_output: {\n        source: 'n8n-template',\n        note: 'Replace this node with your AI or rules-based analysis.'\n      },\n      model_used: 'n8n-template'\n    }\n  }\n}];"
+      },
+      "id": "build-objective-result",
+      "name": "Build Objective Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-n8n-signature",
+              "value": "={{ $json.n8n_signature }}"
+            },
+            {
+              "name": "x-n8n-timestamp",
+              "value": "={{ $json.n8n_timestamp }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  objective_id: $json.objective_id,\n  status: 'completed',\n  result: $json.objective_result\n} }}"
+      },
+      "id": "callback-backend",
+      "name": "Callback to Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = JSON.stringify($input.first().json);\nconst timestamp = Math.floor(Date.now() / 1000);\nconst secret = $env.APP_WEBHOOK_SECRET;\nconst crypto = require('crypto');\nconst signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    n8n_timestamp: String(timestamp),\n    n8n_signature: signature\n  }\n}];"
+      },
+      "id": "sign-callback",
+      "name": "Sign Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  ok: true,\n  received: true,\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  objective_id: $json.objective_id\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Build Objective Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Objective Result": {
+      "main": [
+        [
+          {
+            "node": "Sign Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Callback": {
+      "main": [
+        [
+          {
+            "node": "Callback to Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback to Website": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}
