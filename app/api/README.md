@@ -23,6 +23,7 @@ Planned domains:
 
 Webhook note:
 - `lib/n8n/client.ts` sends identify/objective jobs to the workflow URL envs. Use `N8N_IDENTIFY_WEBHOOK_URL` / `N8N_OBJECTIVE_WEBHOOK_URL` for production endpoints, or keep `N8N_WEBHOOK_URL` as the shared fallback.
+- See `docs/n8n-workflow.md` for the exact n8n node layout, response mode, callback format, and recommended expressions.
 - `N8N_WEBHOOK_SECRET` signs outbound BE -> n8n requests.
 - `APP_WEBHOOK_SECRET` verifies inbound n8n -> BE callbacks.
 - Outbound job payloads include `app`, `action`, `job`, `project`, and action-specific data. For identify, the payload also includes both `identify.drafts` and `identify.merged`.

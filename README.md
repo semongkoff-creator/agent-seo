@@ -7,6 +7,7 @@ Prototype HTML reference + upcoming Next.js app foundation.
 - `reference-html/` holds the original static HTML prototype.
 - `app/`, `components/`, `lib/`, `scripts/`, and `tests/` are the scaffold for the Next.js rewrite.
 - `app/api/openapi` exposes a static OpenAPI snapshot, and `app/api/docs` renders a dev-only docs page.
+- `docs/n8n-workflow.md` explains the exact n8n node flow for identify and objective.
 
 ## Local setup
 
