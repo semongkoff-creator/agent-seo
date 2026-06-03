@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import type { ListDiagnosesQuery, RerunDiagnosisInput } from '@/lib/validators/diagnoses';
 
 function notFound(message: string) {
@@ -13,6 +13,10 @@ export async function listDiagnoses(userId: string, query: ListDiagnosesQuery) {
     .eq('user_id', userId);
 
   if (projectsError) {
+    if (isMissingRelationError(projectsError)) {
+      return { items: [], page: query.page, limit: query.limit, total: 0 };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to list diagnoses', 500, {
       cause: projectsError.message
     });
@@ -46,6 +50,10 @@ export async function listDiagnoses(userId: string, query: ListDiagnosesQuery) {
 export async function getDiagnosis(userId: string, diagnosisId: string) {
   const { data, error } = await db.from('seo_diagnoses').select('*').eq('id', diagnosisId).maybeSingle();
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('NOT_FOUND', 'Diagnosis not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load diagnosis', 500, { cause: error.message });
   }
   if (!data) {
@@ -60,6 +68,10 @@ export async function getDiagnosis(userId: string, diagnosisId: string) {
     .maybeSingle();
 
   if (projectError) {
+    if (isMissingRelationError(projectError)) {
+      throw new AppError('NOT_FOUND', 'Diagnosis not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to validate diagnosis access', 500, {
       cause: projectError.message
     });

@@ -193,7 +193,7 @@ export function formatProjectLabel(name: string | null | undefined) {
 }
 
 export function formatProjectUrl(value: string | null | undefined) {
-  return typeof value === 'string' && value.trim() ? value : 'https://example.com';
+  return typeof value === 'string' && value.trim() ? value : 'Website not provided';
 }
 
 export function parseTags(value: unknown) {

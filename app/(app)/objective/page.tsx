@@ -5,6 +5,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { listObjectives } from '@/lib/services/objectives';
 import { listProjects } from '@/lib/services/projects';
+import { formatWibDate } from '@/lib/time';
 
 function toText(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value : fallback;
@@ -88,7 +89,7 @@ export default async function ObjectivesPage() {
                 'The SMART objective will appear here once the generation workflow completes.'
               );
               const generatedAt = toText(record.completed_at ?? record.created_at, 'Recently');
-              const generatedLabel = generatedAt ? new Date(generatedAt).toLocaleDateString() : 'Recently';
+              const generatedLabel = generatedAt ? formatWibDate(generatedAt) : 'Recently';
 
               return (
                 <article key={id} className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">

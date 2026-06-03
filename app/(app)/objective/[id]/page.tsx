@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   ArrowUpRight,
   Brain,
@@ -13,10 +14,12 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { AppError } from '@/lib/errors';
 import { requireUser } from '@/lib/auth/session';
 import { getDiagnosis } from '@/lib/services/diagnoses';
 import { getObjective } from '@/lib/services/objectives';
 import { getProject } from '@/lib/services/projects';
+import { formatWibDate, formatWibDateTime } from '@/lib/time';
 
 type ObjectiveRecord = Record<string, unknown>;
 
@@ -156,12 +159,42 @@ function renderArrayCards(title: string, items: unknown[], emptyLabel: string) {
 
 export default async function ObjectivePage({ params }: { params: { id: string } }) {
   const user = await requireUser();
-  const objective = (await getObjective(user.id, params.id)) as ObjectiveRecord;
+  let objective: ObjectiveRecord;
+  try {
+    objective = (await getObjective(user.id, params.id)) as ObjectiveRecord;
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+
   const objectiveProjectId = String(objective.project_id);
-  const project = (await getProject(user.id, objectiveProjectId)) as ObjectiveRecord;
-  const diagnosis = objective.diagnosis_id
-    ? ((await getDiagnosis(user.id, String(objective.diagnosis_id))) as ObjectiveRecord)
-    : null;
+
+  let project: ObjectiveRecord;
+  try {
+    project = (await getProject(user.id, objectiveProjectId)) as ObjectiveRecord;
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+
+  let diagnosis: ObjectiveRecord | null = null;
+  if (objective.diagnosis_id) {
+    try {
+      diagnosis = (await getDiagnosis(user.id, String(objective.diagnosis_id))) as ObjectiveRecord;
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode === 404) {
+        diagnosis = null;
+      } else {
+        throw error;
+      }
+    }
+  }
 
   const projectName = toText(project.name, 'Project');
   const objectiveType = objectiveTypeLabel(objective.objective_type);
@@ -174,8 +207,8 @@ export default async function ObjectivePage({ params }: { params: { id: string }
   const achievabilityScore = toText(objective.achievability_score, '');
   const achievabilityPercent = objective.achievability_percent ? `${toNumber(objective.achievability_percent)}%` : 'n/a';
   const createdAt = toText(objective.completed_at ?? objective.created_at, 'Recently');
-  const analyzedDate = createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently';
-  const generatedAt = createdAt ? new Date(createdAt).toLocaleString() : 'Recently';
+  const analyzedDate = formatWibDate(createdAt);
+  const generatedAt = formatWibDateTime(createdAt);
   const baseline = toObject(objective.baseline);
   const target = toObject(objective.target);
   const inputMetrics = toObject(objective.input_metrics);

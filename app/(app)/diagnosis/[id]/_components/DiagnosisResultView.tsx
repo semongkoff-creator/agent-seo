@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Ban, Brain, CircleAlert, Sparkles } from 'lucide-react';
 import { ConfidenceGauge } from '@/components/ui/confidence-gauge';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { formatWibDateTime } from '@/lib/time';
 
 type DiagnosisResultViewProps = {
   diagnosisId: string;
@@ -97,7 +98,7 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
   const campaignReadiness = toText(diagnosis.campaign_readiness, 'not_ready');
   const modelUsed = toText(diagnosis.model_used, 'n8n');
   const analyzedAt = toText(diagnosis.completed_at ?? diagnosis.created_at, 'Recently');
-  const metaDate = analyzedAt ? new Date(analyzedAt).toLocaleDateString() : 'Recently';
+  const metaDate = formatWibDateTime(analyzedAt);
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import { buildObjectiveWorkflowPayload } from '@/lib/n8n/contracts';
 import { triggerJob } from '@/lib/n8n/client';
 import type {
@@ -24,6 +24,10 @@ export async function listObjectives(userId: string, query: ObjectiveListQuery) 
     .eq('user_id', userId);
 
   if (projectsError) {
+    if (isMissingRelationError(projectsError)) {
+      return { items: [], page: query.page, limit: query.limit, total: 0 };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to list objectives', 500, {
       cause: projectsError.message
     });
@@ -61,6 +65,10 @@ export async function listObjectives(userId: string, query: ObjectiveListQuery) 
 export async function getObjective(userId: string, objectiveId: string) {
   const { data, error } = await db.from('seo_objectives').select('*').eq('id', objectiveId).maybeSingle();
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('NOT_FOUND', 'Objective not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load objective', 500, { cause: error.message });
   }
   if (!data) {
@@ -101,6 +109,10 @@ export async function getObjectiveDraft(userId: string, projectId: string) {
     .order('created_at', { ascending: true });
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      return { items: [] };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load objective draft', 500, { cause: error.message });
   }
 
@@ -132,6 +144,10 @@ export async function saveObjectiveInputs(userId: string, projectId: string, inp
     .single();
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('INTERNAL_ERROR', 'Failed to save objective inputs', 500, { cause: error.message });
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to save objective inputs', 500, { cause: error.message });
   }
 
@@ -224,9 +240,11 @@ export async function generateObjective(userId: string, projectId: string, input
     );
 
   if (progressError) {
-    throw new AppError('INTERNAL_ERROR', 'Failed to update campaign progress', 500, {
-      cause: progressError.message
-    });
+    if (!isMissingRelationError(progressError)) {
+      throw new AppError('INTERNAL_ERROR', 'Failed to update campaign progress', 500, {
+        cause: progressError.message
+      });
+    }
   }
 
   try {

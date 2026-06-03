@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import type {
   CreateProjectInput,
   ListProjectsQuery,
@@ -22,6 +22,10 @@ async function ensureCampaignProgress(projectId: string) {
   });
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      return;
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to initialize campaign progress', 500, {
       cause: error.message
     });
@@ -42,6 +46,15 @@ export async function listProjects(userId: string, query: ListProjectsQuery) {
 
   const { data, error, count } = await request;
   if (error) {
+    if (isMissingRelationError(error)) {
+      return {
+        items: [],
+        page: query.page,
+        limit: query.limit,
+        total: 0
+      };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to list projects', 500, { cause: error.message });
   }
 
@@ -88,6 +101,10 @@ export async function getProject(userId: string, projectId: string) {
     .maybeSingle();
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('NOT_FOUND', 'Project not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load project', 500, { cause: error.message });
   }
 
@@ -102,6 +119,13 @@ export async function getProject(userId: string, projectId: string) {
     .order('step_number', { ascending: true });
 
   if (progressError) {
+    if (isMissingRelationError(progressError)) {
+      return {
+        ...data,
+        campaignProgress: []
+      };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load campaign progress', 500, {
       cause: progressError.message
     });
@@ -134,6 +158,10 @@ export async function updateProject(userId: string, projectId: string, input: Up
     .maybeSingle();
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('NOT_FOUND', 'Project not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to update project', 500, { cause: error.message });
   }
 
@@ -154,6 +182,10 @@ export async function archiveProject(userId: string, projectId: string) {
     .maybeSingle();
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      throw new AppError('NOT_FOUND', 'Project not found', 404);
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to archive project', 500, { cause: error.message });
   }
 

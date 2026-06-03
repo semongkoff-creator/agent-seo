@@ -1,9 +1,19 @@
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 
 export async function getDashboardOverview(userId: string) {
   const { data: projectRows, error: projectError } = await db.from('projects').select('id, status').eq('user_id', userId);
   if (projectError) {
+    if (isMissingRelationError(projectError)) {
+      return {
+        projectCount: 0,
+        activeProjectCount: 0,
+        completedDiagnoses: 0,
+        completedObjectives: 0,
+        recentEvents: []
+      };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load dashboard overview', 500, {
       cause: projectError.message
     });
@@ -25,6 +35,20 @@ export async function getDashboardOverview(userId: string) {
   ]);
 
   if (diagnoses.error || objectives.error || events.error) {
+    if (
+      isMissingRelationError(diagnoses.error) ||
+      isMissingRelationError(objectives.error) ||
+      isMissingRelationError(events.error)
+    ) {
+      return {
+        projectCount: projectRows?.length ?? 0,
+        activeProjectCount: projectRows?.filter((project) => project.status === 'active').length ?? 0,
+        completedDiagnoses: 0,
+        completedObjectives: 0,
+        recentEvents: []
+      };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load dashboard overview', 500, {
       cause:
         diagnoses.error?.message ??
@@ -52,6 +76,10 @@ export async function listDashboardInsights(userId: string) {
     .limit(5);
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      return { items: [] };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load dashboard insights', 500, { cause: error.message });
   }
 

@@ -1,11 +1,15 @@
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import { encryptSecret } from '@/lib/crypto/secrets';
 import type { IntegrationConnectRequest, IntegrationProvider } from '@/lib/validators/integrations';
 
 export async function listIntegrations(userId: string) {
   const { data, error } = await db.from('integrations').select('*').eq('user_id', userId);
   if (error) {
+    if (isMissingRelationError(error)) {
+      return { items: [] };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to list integrations', 500, { cause: error.message });
   }
   return { items: data ?? [] };

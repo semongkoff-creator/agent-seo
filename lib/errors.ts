@@ -36,6 +36,18 @@ export function normalizeError(error: unknown): AppError {
   return new AppError('INTERNAL_ERROR', 'Unexpected error', 500, { error });
 }
 
+export function isMissingRelationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const message = typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
+
+  return code === '42P01' || message.includes('does not exist') || message.includes('relation');
+}
+
 export function toResponse(error: unknown): Response {
   const normalized = normalizeError(error);
   const body = {

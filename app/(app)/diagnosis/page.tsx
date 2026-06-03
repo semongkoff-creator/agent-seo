@@ -6,6 +6,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { listDiagnoses } from '@/lib/services/diagnoses';
 import { listProjects } from '@/lib/services/projects';
+import { formatWibDate } from '@/lib/time';
 
 function toText(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value : fallback;
@@ -94,7 +95,7 @@ export default async function DiagnosesPage() {
               const severity = toText(record.severity, 'medium').toLowerCase() as 'low' | 'medium' | 'high' | 'critical';
               const status = toText(record.status, 'pending');
               const createdAt = toText(record.completed_at ?? record.created_at, 'Recently');
-              const createdLabel = createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently';
+              const createdLabel = createdAt ? formatWibDate(createdAt) : 'Recently';
 
               return (
                 <article key={id} className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">

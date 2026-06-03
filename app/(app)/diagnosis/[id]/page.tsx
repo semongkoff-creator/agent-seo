@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { AppError } from '@/lib/errors';
 import { requireUser } from '@/lib/auth/session';
 import { getDiagnosis } from '@/lib/services/diagnoses';
 import { getProject } from '@/lib/services/projects';
@@ -8,8 +10,27 @@ import { DiagnosisResultView } from './_components/DiagnosisResultView';
 
 export default async function DiagnosisPage({ params }: { params: { id: string } }) {
   const user = await requireUser();
-  const diagnosis = await getDiagnosis(user.id, params.id);
-  const project = await getProject(user.id, diagnosis.project_id);
+  let diagnosis;
+  try {
+    diagnosis = await getDiagnosis(user.id, params.id);
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
+
+  let project;
+  try {
+    project = await getProject(user.id, diagnosis.project_id);
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 404) {
+      notFound();
+    }
+
+    throw error;
+  }
   const diagnosisRecord = diagnosis as Record<string, unknown>;
   const projectRecord = project as Record<string, unknown>;
   const projectName = typeof projectRecord.name === 'string' && projectRecord.name ? projectRecord.name : 'Unknown Project';

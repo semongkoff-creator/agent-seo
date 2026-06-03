@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import type { CreateApiKeyInput } from '@/lib/validators/api-keys';
 
 function hashKey(key: string) {
@@ -15,6 +15,10 @@ export async function listApiKeys(userId: string) {
     .order('created_at', { ascending: false });
 
   if (error) {
+    if (isMissingRelationError(error)) {
+      return { items: [] };
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to list API keys', 500, { cause: error.message });
   }
 

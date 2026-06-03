@@ -202,7 +202,7 @@ export function CreateProjectForm() {
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-on-surface-variant">
-          The project is created in Supabase, then we’ll open the Identify workflow automatically.
+          The project is created in Supabase, then we&apos;ll open the Identify workflow automatically.
         </p>
         <button
           type="submit"

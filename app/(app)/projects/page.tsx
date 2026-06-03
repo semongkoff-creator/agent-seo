@@ -2,13 +2,14 @@ import Link from 'next/link';
 import { ArrowUpRight, LayoutGrid, ShieldCheck, Sparkles, FolderKanban, Target, Activity } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
-import { CreateProjectForm } from './_components/CreateProjectForm';
+import { CreateProjectModal } from './_components/CreateProjectModal';
 import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview } from '@/lib/services/dashboard';
 import { listProjects } from '@/lib/services/projects';
+import { formatWibDate } from '@/lib/time';
 
 function formatProjectUrl(record: Record<string, unknown>) {
-  return typeof record.website_url === 'string' && record.website_url ? record.website_url : 'https://example.com';
+  return typeof record.website_url === 'string' && record.website_url ? record.website_url : 'Website not provided';
 }
 
 export default async function ProjectsPage() {
@@ -66,7 +67,25 @@ export default async function ProjectsPage() {
         </PageHeader>
 
         <div id="new-project" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2">
-          <CreateProjectForm />
+          <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-semibold text-on-surface">Create a new project</h2>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+              Open the modal, fill the brief, and we&apos;ll jump straight into Identify without leaving this page.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <CreateProjectModal />
+              <Link href="/identify" className="text-sm font-semibold text-primary hover:underline">
+                Open Identify hub
+              </Link>
+            </div>
+            <div className="mt-5 rounded-2xl bg-surface-container-low p-4 text-sm leading-6 text-on-surface-variant">
+              n8n will orchestrate the workflow after the project is created, so this step only captures the brief and
+              hands it off cleanly.
+            </div>
+          </div>
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick stats</p>
             <div className="mt-4 grid grid-cols-3 gap-3">
@@ -90,8 +109,7 @@ export default async function ProjectsPage() {
                 const url = formatProjectUrl(record);
                 const status = typeof record.status === 'string' ? record.status : 'active';
                 const currentStep = typeof record.current_step === 'number' ? record.current_step : 1;
-                const updatedAt =
-                  typeof record.updated_at === 'string' ? new Date(record.updated_at).toLocaleDateString() : 'Recently';
+                const updatedAt = typeof record.updated_at === 'string' ? formatWibDate(record.updated_at) : 'Recently';
                 const keywords =
                   typeof record.main_business_goal === 'string' ? record.main_business_goal : 'SEO coverage';
                 const projectId = String(record.id);

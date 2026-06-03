@@ -5,6 +5,7 @@ import { db } from '@/lib/db/client';
 import { requireUser } from '@/lib/auth/session';
 import { listApiKeys } from '@/lib/services/api-keys';
 import { listIntegrations } from '@/lib/services/integrations';
+import { formatWibDate } from '@/lib/time';
 import {
   CopyApiKeyButton,
   IntegrationActionButton,
@@ -42,8 +43,7 @@ function formatDate(value: unknown) {
   if (typeof value !== 'string' || !value) {
     return 'Recently';
   }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? 'Recently' : parsed.toLocaleDateString();
+  return formatWibDate(value);
 }
 
 export default async function SettingsPage() {
@@ -59,10 +59,10 @@ export default async function SettingsPage() {
   ]);
 
   const profile = profileResult.data;
-  const profileName = profile?.full_name ?? user.fullName ?? 'Alex Rivera';
-  const profileEmail = profile?.email ?? user.email ?? 'alex.rivera@techflow.io';
-  const profileRole = profile?.role ?? user.role ?? 'Senior SEO Strategist';
-  const profileTimezone = profile?.timezone ?? 'Pacific Time (PT)';
+  const profileName = profile?.full_name ?? user.fullName ?? 'Your account';
+  const profileEmail = profile?.email ?? user.email ?? '';
+  const profileRole = profile?.role ?? user.role ?? 'Member';
+  const profileTimezone = profile?.timezone ?? 'Asia/Jakarta (WIB)';
   const avatarLabel =
     profileName
       .split(' ')
@@ -72,69 +72,33 @@ export default async function SettingsPage() {
       .join('')
       .toUpperCase() || 'AR';
 
-  const integrations = (integrationsResult.items.length > 0 ? integrationsResult.items : ['gsc', 'ga4', 'ahrefs', 'semrush']).map(
-    (integration, index) => {
-      if (typeof integration === 'string') {
-        const preset = integrationLabels[integration] ?? integrationLabels.gsc;
-        return {
-          key: integration,
-          ...preset,
-          status: index < 2 ? 'Connected' : 'Not Connected',
-          detailValue: index < 2 ? (integration === 'ga4' ? 'UA-8231...' : '12m ago') : index === 2 ? '--' : 'Daily'
-        };
-      }
+  const integrations = integrationsResult.items.map((integration) => {
+    const record = integration as Record<string, unknown>;
+    const provider = typeof record.provider === 'string' ? record.provider : 'gsc';
+    const preset = integrationLabels[provider] ?? integrationLabels.gsc;
+    const status = typeof record.status === 'string' ? record.status : 'disconnected';
+    const detailValue =
+      provider === 'gsc'
+        ? formatDate(record.last_sync_at)
+        : provider === 'ga4'
+          ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).propertyId === 'string'
+              ? String((record.metadata as Record<string, unknown>).propertyId)
+              : '--')
+          : provider === 'ahrefs'
+            ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).credits === 'number'
+                ? String((record.metadata as Record<string, unknown>).credits)
+                : '--')
+            : 'Daily';
 
-      const record = integration as Record<string, unknown>;
-      const provider = typeof record.provider === 'string' ? record.provider : 'gsc';
-      const preset = integrationLabels[provider] ?? integrationLabels.gsc;
-      const status =
-        typeof record.status === 'string'
-          ? record.status
-          : 'disconnected';
-      const detailValue =
-        provider === 'gsc'
-          ? formatDate(record.last_sync_at)
-          : provider === 'ga4'
-            ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).propertyId === 'string'
-                ? String((record.metadata as Record<string, unknown>).propertyId)
-                : 'UA-8231...')
-            : provider === 'ahrefs'
-              ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).credits === 'number'
-                  ? String((record.metadata as Record<string, unknown>).credits)
-                  : '--')
-              : 'Daily';
+    return {
+      key: typeof record.id === 'string' ? record.id : provider,
+      ...preset,
+      status: status === 'connected' ? 'Connected' : 'Not Connected',
+      detailValue
+    };
+  });
 
-      return {
-        key: typeof record.id === 'string' ? record.id : provider,
-        ...preset,
-        status: status === 'connected' ? 'Connected' : 'Not Connected',
-        detailValue
-      };
-    }
-  );
-
-  const apiKeys = apiKeysResult.items.length > 0 ? apiKeysResult.items : [
-    {
-      id: 'live-1',
-      label: 'Production Copilot',
-      key_prefix: 'sk_live_',
-      created_at: '2023-10-24T00:00:00Z',
-      environment: 'live',
-      last_used_at: null,
-      expires_at: null,
-      revoked_at: null
-    },
-    {
-      id: 'test-1',
-      label: 'Staging Test Key',
-      key_prefix: 'sk_test_',
-      created_at: '2023-09-12T00:00:00Z',
-      environment: 'test',
-      last_used_at: null,
-      expires_at: null,
-      revoked_at: null
-    }
-  ];
+  const apiKeys = apiKeysResult.items;
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -256,45 +220,57 @@ export default async function SettingsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {integrations.map((integration) => (
-              <article
-                key={integration.key}
-                className="flex flex-col gap-4 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className={`rounded-xl bg-surface-container px-3 py-3 ${integration.accent}`}>
-                    <Globe className="h-5 w-5" />
-                  </div>
-                  <span
-                    className={[
-                      'rounded-full px-3 py-1 text-xs font-semibold',
-                      integration.status === 'Connected'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-surface-container-high text-on-surface-variant'
-                    ].join(' ')}
-                  >
-                    {integration.status}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-on-surface">{integration.name}</h3>
-                  <p className="mt-1 text-sm text-on-surface-variant">{integration.description}</p>
-                </div>
-                <div className="mt-auto space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-on-surface-variant">{integration.detailLabel}</span>
-                    <span className="font-semibold text-on-surface">{integration.detailValue}</span>
-                  </div>
-                  <IntegrationActionButton
-                    provider={integration.key}
-                    connected={integration.status === 'Connected'}
-                    label={integration.name}
-                  />
-                </div>
-              </article>
-            ))}
+          <div className="rounded-2xl border border-dashed border-primary/25 bg-primary-container/40 px-4 py-4 text-sm leading-6 text-on-primary-container">
+            n8n tetap menjadi engine untuk semua workflow SEO. Integrasi di sini hanya menyimpan credential dan status
+            koneksi supaya workflow bisa dipanggil otomatis dari website.
           </div>
+
+          {integrations.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {integrations.map((integration) => (
+                <article
+                  key={integration.key}
+                  className="flex flex-col gap-4 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className={`rounded-xl bg-surface-container px-3 py-3 ${integration.accent}`}>
+                      <Globe className="h-5 w-5" />
+                    </div>
+                    <span
+                      className={[
+                        'rounded-full px-3 py-1 text-xs font-semibold',
+                        integration.status === 'Connected'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-surface-container-high text-on-surface-variant'
+                      ].join(' ')}
+                    >
+                      {integration.status}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-on-surface">{integration.name}</h3>
+                    <p className="mt-1 text-sm text-on-surface-variant">{integration.description}</p>
+                  </div>
+                  <div className="mt-auto space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-on-surface-variant">{integration.detailLabel}</span>
+                      <span className="font-semibold text-on-surface">{integration.detailValue}</span>
+                    </div>
+                    <IntegrationActionButton
+                      provider={integration.key}
+                      connected={integration.status === 'Connected'}
+                      label={integration.name}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-outline-variant bg-surface-container-low p-6 text-sm leading-6 text-on-surface-variant">
+              No integrations connected yet. n8n will still run the SEO workflows, but connecting accounts here lets
+              you pull in data sources like Search Console and GA4.
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">
@@ -302,7 +278,7 @@ export default async function SettingsPage() {
             <div>
               <h2 className="text-xl font-semibold text-on-surface">API Keys</h2>
               <p className="text-sm leading-6 text-on-surface-variant">
-                Manage your unique keys for programmatic access to the SEO engine.
+                Manage your unique keys for programmatic access to the SEO engine, webhooks, and automation scripts.
               </p>
             </div>
             <button
@@ -314,57 +290,68 @@ export default async function SettingsPage() {
             </button>
           </div>
 
-          <ResponsiveTable
-            rows={apiKeys}
-            getRowKey={(row) => String(row.id)}
-            columns={[
-              {
-                key: 'label',
-                label: 'Label',
-                render: (row: Record<string, unknown>) => (
-                  <div className="flex items-center gap-3">
-                    <span className={['h-2.5 w-2.5 rounded-full', row.revoked_at ? 'bg-outline' : 'bg-emerald-500'].join(' ')} />
-                    <span className="font-semibold text-on-surface">{String(row.label)}</span>
-                  </div>
-                )
-              },
-              {
-                key: 'key',
-                label: 'Key',
-                render: (row: Record<string, unknown>) => (
-                  <div className="flex items-center justify-end gap-2 md:justify-start">
-                    <span className="font-mono text-sm text-on-surface-variant">
-                      {`${String(row.key_prefix ?? 'sk_')}********`}
+          {apiKeys.length > 0 ? (
+            <ResponsiveTable
+              rows={apiKeys}
+              getRowKey={(row) => String(row.id)}
+              columns={[
+                {
+                  key: 'label',
+                  label: 'Label',
+                  render: (row: Record<string, unknown>) => (
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={[
+                          'h-2.5 w-2.5 rounded-full',
+                          row.revoked_at ? 'bg-outline' : 'bg-emerald-500'
+                        ].join(' ')}
+                      />
+                      <span className="font-semibold text-on-surface">{String(row.label)}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'key',
+                  label: 'Key',
+                  render: (row: Record<string, unknown>) => (
+                    <div className="flex items-center justify-end gap-2 md:justify-start">
+                      <span className="font-mono text-sm text-on-surface-variant">
+                        {`${String(row.key_prefix ?? 'sk_')}********`}
+                      </span>
+                      <CopyApiKeyButton value={`${String(row.key_prefix ?? 'sk_')}********`} />
+                    </div>
+                  )
+                },
+                {
+                  key: 'created',
+                  label: 'Created',
+                  render: (row: Record<string, unknown>) => (
+                    <span className="text-sm text-on-surface-variant">{formatDate(row.created_at)}</span>
+                  )
+                },
+                {
+                  key: 'usage',
+                  label: 'Usage',
+                  render: (row: Record<string, unknown>) => (
+                    <span className="text-sm font-semibold text-on-surface">
+                      {row.last_used_at ? formatDate(row.last_used_at) : 'Never used'}
                     </span>
-                    <CopyApiKeyButton value={`${String(row.key_prefix ?? 'sk_')}********`} />
-                  </div>
-                )
-              },
-              {
-                key: 'created',
-                label: 'Created',
-                render: (row: Record<string, unknown>) => (
-                  <span className="text-sm text-on-surface-variant">{formatDate(row.created_at)}</span>
-                )
-              },
-              {
-                key: 'usage',
-                label: 'Usage',
-                render: (row: Record<string, unknown>) => (
-                  <span className="text-sm font-semibold text-on-surface">
-                    {row.last_used_at ? formatDate(row.last_used_at) : 'Never used'}
-                  </span>
-                )
-              },
-              {
-                key: 'actions',
-                label: 'Actions',
-                render: (row: Record<string, unknown>) => (
-                  <RevokeApiKeyButton id={String(row.id)} label={String(row.label)} />
-                )
-              }
-            ]}
-          />
+                  )
+                },
+                {
+                  key: 'actions',
+                  label: 'Actions',
+                  render: (row: Record<string, unknown>) => (
+                    <RevokeApiKeyButton id={String(row.id)} label={String(row.label)} />
+                  )
+                }
+              ]}
+            />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-outline-variant bg-surface-container-low p-6 text-sm leading-6 text-on-surface-variant">
+              No API keys yet. Create one only if another tool or script needs machine access to the SEO API.
+            </div>
+          )}
         </section>
       </section>
     </div>

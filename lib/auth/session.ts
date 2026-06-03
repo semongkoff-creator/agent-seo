@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
-import { AppError } from '@/lib/errors';
+import { AppError, isMissingRelationError } from '@/lib/errors';
 import { authCookieNames } from '@/lib/auth/cookies';
 import { hashToken } from '@/lib/auth/local-auth';
 
@@ -108,6 +108,10 @@ async function getLocalUserFromToken(token: string) {
     .maybeSingle();
 
   if (sessionError) {
+    if (isMissingRelationError(sessionError)) {
+      return null;
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load local session', 500, {
       cause: sessionError.message
     });
@@ -124,6 +128,10 @@ async function getLocalUserFromToken(token: string) {
     .maybeSingle();
 
   if (accountError) {
+    if (isMissingRelationError(accountError)) {
+      return null;
+    }
+
     throw new AppError('INTERNAL_ERROR', 'Failed to load local auth account', 500, {
       cause: accountError.message
     });
