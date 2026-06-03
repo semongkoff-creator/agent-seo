@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { hashPassword } from '@/lib/auth/local-auth';
 
 async function main() {
   const url = process.env.SUPABASE_URL;
@@ -31,8 +32,24 @@ async function main() {
     }
 
     const existingAdmin = userPage.users.find((user) => user.email?.toLowerCase() === adminEmail.toLowerCase());
+    const { data: existingProfile, error: profileLookupError } = await client
+      .from('users')
+      .select('id, email')
+      .eq('email', adminEmail.toLowerCase())
+      .maybeSingle();
+
+    if (profileLookupError) {
+      throw profileLookupError;
+    }
 
     if (existingAdmin) {
+      if (existingProfile && existingProfile.id !== existingAdmin.id) {
+        const { error: cleanupError } = await client.from('users').delete().eq('email', adminEmail.toLowerCase());
+        if (cleanupError) {
+          throw cleanupError;
+        }
+      }
+
       const { error: updateError } = await client.auth.admin.updateUserById(existingAdmin.id, {
         password: adminPassword,
         email_confirm: true,
@@ -45,6 +62,23 @@ async function main() {
         throw updateError;
       }
 
+      const { error: localAccountUpsertError } = await client.from('auth_accounts').upsert({
+        id: existingAdmin.id,
+        email: adminEmail,
+        password_hash: hashPassword(adminPassword),
+        status: 'active',
+        full_name: adminFullName,
+        avatar_url: null,
+        role: 'admin',
+        email_verified_at: new Date().toISOString(),
+        password_updated_at: new Date().toISOString(),
+        last_login_at: new Date().toISOString()
+      });
+
+      if (localAccountUpsertError) {
+        throw localAccountUpsertError;
+      }
+
       await client.from('users').upsert({
         id: existingAdmin.id,
         email: adminEmail,
@@ -55,6 +89,13 @@ async function main() {
 
       console.log('Updated admin auth user and profile for', adminEmail);
     } else {
+      if (existingProfile) {
+        const { error: cleanupError } = await client.from('users').delete().eq('email', adminEmail.toLowerCase());
+        if (cleanupError) {
+          throw cleanupError;
+        }
+      }
+
       const { data: createdUser, error: createError } = await client.auth.admin.createUser({
         email: adminEmail,
         password: adminPassword,
@@ -70,6 +111,23 @@ async function main() {
 
       if (!createdUser.user) {
         throw new Error('Failed to create admin auth user');
+      }
+
+      const { error: localAccountUpsertError } = await client.from('auth_accounts').upsert({
+        id: createdUser.user.id,
+        email: adminEmail,
+        password_hash: hashPassword(adminPassword),
+        status: 'active',
+        full_name: adminFullName,
+        avatar_url: null,
+        role: 'admin',
+        email_verified_at: new Date().toISOString(),
+        password_updated_at: new Date().toISOString(),
+        last_login_at: new Date().toISOString()
+      });
+
+      if (localAccountUpsertError) {
+        throw localAccountUpsertError;
       }
 
       await client.from('users').upsert({

@@ -33,22 +33,91 @@ const client = createClient(url, serviceKey, {
   }
 });
 
-const { data: account, error: accountLookupError } = await client
-  .from('auth_accounts')
-  .select('id, email')
-  .eq('email', adminEmail.toLowerCase())
-  .maybeSingle();
+const email = adminEmail.toLowerCase();
+const { data: userPage, error: listError } = await client.auth.admin.listUsers({
+  page: 1,
+  perPage: 1000
+});
 
-if (accountLookupError) {
-  throw accountLookupError;
+if (listError) {
+  throw listError;
 }
 
-const userId = account?.id ?? randomUUID();
+const existingAuthUser = userPage.users.find((user) => user.email?.toLowerCase() === email);
+let userId = existingAuthUser?.id ?? randomUUID();
+
+if (existingAuthUser) {
+  const { error: updateError } = await client.auth.admin.updateUserById(existingAuthUser.id, {
+    password: adminPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: adminFullName
+    }
+  });
+
+  if (updateError) {
+    throw updateError;
+  }
+} else {
+  const { data: createdUser, error: createError } = await client.auth.admin.createUser({
+    email: adminEmail,
+    password: adminPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: adminFullName
+    }
+  });
+
+  if (createError) {
+    throw createError;
+  }
+
+  if (!createdUser.user) {
+    throw new Error('Failed to create admin auth user');
+  }
+
+  userId = createdUser.user.id;
+}
+
+const { data: profile, error: profileLookupError } = await client
+  .from('users')
+  .select('id, email')
+  .eq('email', email)
+  .maybeSingle();
+
+if (profileLookupError) {
+  throw profileLookupError;
+}
+
+if (profile && profile.id !== userId) {
+  const { error: cleanupError } = await client.from('users').delete().eq('email', email);
+  if (cleanupError) {
+    throw cleanupError;
+  }
+}
+
 const passwordHash = hashPassword(adminPassword);
+
+const { data: localAccount, error: localAccountLookupError } = await client
+  .from('auth_accounts')
+  .select('id, email')
+  .eq('email', email)
+  .maybeSingle();
+
+if (localAccountLookupError) {
+  throw localAccountLookupError;
+}
+
+if (localAccount && localAccount.id !== userId) {
+  const { error: cleanupError } = await client.from('auth_accounts').delete().eq('email', email);
+  if (cleanupError) {
+    throw cleanupError;
+  }
+}
 
 const { error: upsertAuthError } = await client.from('auth_accounts').upsert({
   id: userId,
-  email: adminEmail.toLowerCase(),
+  email,
   password_hash: passwordHash,
   status: 'active',
   full_name: adminFullName,
@@ -65,7 +134,7 @@ if (upsertAuthError) {
 
 const { error: profileError } = await client.from('users').upsert({
   id: userId,
-  email: adminEmail.toLowerCase(),
+  email,
   full_name: adminFullName,
   role: 'admin',
   timezone: 'Asia/Jakarta'
