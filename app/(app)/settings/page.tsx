@@ -1,43 +1,11 @@
 import Link from 'next/link';
-import { Globe, KeyRound, PenSquare, Plus, Sparkles } from 'lucide-react';
+import { KeyRound, PenSquare, Plus, Sparkles } from 'lucide-react';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { db } from '@/lib/db/client';
 import { requireUser } from '@/lib/auth/session';
 import { listApiKeys } from '@/lib/services/api-keys';
-import { listIntegrations } from '@/lib/services/integrations';
 import { formatWibDate } from '@/lib/time';
-import {
-  CopyApiKeyButton,
-  IntegrationActionButton,
-  RevokeApiKeyButton
-} from './_components/SettingsActions';
-
-const integrationLabels: Record<string, { name: string; description: string; accent: string; detailLabel: string }> = {
-  gsc: {
-    name: 'Search Console',
-    description: 'Sync keywords and performance data.',
-    accent: 'text-[#4285F4]',
-    detailLabel: 'Last sync'
-  },
-  ga4: {
-    name: 'Google Analytics 4',
-    description: 'Track conversions and user behavior.',
-    accent: 'text-[#FF9800]',
-    detailLabel: 'Active property'
-  },
-  ahrefs: {
-    name: 'Ahrefs API',
-    description: 'Import backlink profile and ranking.',
-    accent: 'text-primary',
-    detailLabel: 'Credits left'
-  },
-  semrush: {
-    name: 'SEMRush',
-    description: 'Competitive audit and market data.',
-    accent: 'text-[#FF642D]',
-    detailLabel: 'Sync frequency'
-  }
-};
+import { CopyApiKeyButton, RevokeApiKeyButton } from './_components/SettingsActions';
 
 function formatDate(value: unknown) {
   if (typeof value !== 'string' || !value) {
@@ -48,13 +16,12 @@ function formatDate(value: unknown) {
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [profileResult, integrationsResult, apiKeysResult] = await Promise.all([
+  const [profileResult, apiKeysResult] = await Promise.all([
     db
       .from('users')
       .select('id, email, full_name, avatar_url, role, plan, timezone')
       .eq('id', user.id)
       .maybeSingle(),
-    listIntegrations(user.id),
     listApiKeys(user.id)
   ]);
 
@@ -72,32 +39,6 @@ export default async function SettingsPage() {
       .join('')
       .toUpperCase() || 'AR';
 
-  const integrations = integrationsResult.items.map((integration) => {
-    const record = integration as Record<string, unknown>;
-    const provider = typeof record.provider === 'string' ? record.provider : 'gsc';
-    const preset = integrationLabels[provider] ?? integrationLabels.gsc;
-    const status = typeof record.status === 'string' ? record.status : 'disconnected';
-    const detailValue =
-      provider === 'gsc'
-        ? formatDate(record.last_sync_at)
-        : provider === 'ga4'
-          ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).propertyId === 'string'
-              ? String((record.metadata as Record<string, unknown>).propertyId)
-              : '--')
-          : provider === 'ahrefs'
-            ? (typeof record.metadata === 'object' && record.metadata !== null && typeof (record.metadata as Record<string, unknown>).credits === 'number'
-                ? String((record.metadata as Record<string, unknown>).credits)
-                : '--')
-            : 'Daily';
-
-    return {
-      key: typeof record.id === 'string' ? record.id : provider,
-      ...preset,
-      status: status === 'connected' ? 'Connected' : 'Not Connected',
-      detailValue
-    };
-  });
-
   const apiKeys = apiKeysResult.items;
 
   return (
@@ -111,7 +52,7 @@ export default async function SettingsPage() {
                 Workspace settings
               </h1>
               <p className="hidden max-w-3xl text-sm leading-6 text-on-surface-variant sm:block md:text-base">
-                Manage your account details, integration credentials, and automation access from one place.
+                Manage your account details and the essentials needed to run the SEO workflow cleanly.
               </p>
             </div>
             <Link
@@ -139,8 +80,7 @@ export default async function SettingsPage() {
 
             <div className="mt-6 space-y-4 text-sm text-on-surface-variant">
               <p>
-                Update your personal information and how others see you on the platform. The profile area stays simple
-                so it is easy to scan on mobile.
+                Update your personal information and keep the workspace simple so the core flow stays easy to use.
               </p>
               <div className="rounded-2xl bg-surface-container-low p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-on-surface">
@@ -213,73 +153,12 @@ export default async function SettingsPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="flex items-end justify-between border-b border-outline-variant pb-2">
-            <h2 className="text-xl font-semibold text-on-surface">API Integrations</h2>
-            <button type="button" className="text-sm font-semibold text-primary underline underline-offset-4">
-              View docs
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-dashed border-primary/25 bg-primary-container/40 px-4 py-4 text-sm leading-6 text-on-primary-container">
-            n8n remains the workflow engine for SEO operations. This page only stores credentials and connection status
-            so the website can trigger workflows automatically.
-          </div>
-
-          {integrations.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {integrations.map((integration) => (
-                <article
-                  key={integration.key}
-                  className="flex flex-col gap-4 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className={`rounded-xl bg-surface-container px-3 py-3 ${integration.accent}`}>
-                      <Globe className="h-5 w-5" />
-                    </div>
-                    <span
-                      className={[
-                        'rounded-full px-3 py-1 text-xs font-semibold',
-                        integration.status === 'Connected'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-surface-container-high text-on-surface-variant'
-                      ].join(' ')}
-                    >
-                      {integration.status}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-on-surface">{integration.name}</h3>
-                    <p className="mt-1 text-sm text-on-surface-variant">{integration.description}</p>
-                  </div>
-                  <div className="mt-auto space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-on-surface-variant">{integration.detailLabel}</span>
-                      <span className="font-semibold text-on-surface">{integration.detailValue}</span>
-                    </div>
-                    <IntegrationActionButton
-                      provider={integration.key}
-                      connected={integration.status === 'Connected'}
-                      label={integration.name}
-                    />
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-outline-variant bg-surface-container-low p-6 text-sm leading-6 text-on-surface-variant">
-              No integrations connected yet. n8n will still run the SEO workflows, but connecting accounts here lets
-              you pull in data sources like Search Console and GA4.
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-on-surface">API Keys</h2>
               <p className="text-sm leading-6 text-on-surface-variant">
-                Use API keys when another app, script, or scheduled job needs to talk to the SEO API without signing in
-                as a user.
+                Use API keys when another app, script, or scheduled job needs machine access without signing in as a
+                user.
               </p>
             </div>
             <button
