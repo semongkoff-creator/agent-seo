@@ -1,0 +1,10 @@
+.env.local
+.env.*.local
+.next/
+node_modules/
+.pnpm-store/
+coverage/
+dist/
+*.tsbuildinfo
+*.log
+
