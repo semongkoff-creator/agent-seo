@@ -24,6 +24,7 @@ type ObjectiveBuilderProps = {
   projectName: string;
   websiteStage: string;
   diagnosisId: string | null;
+  diagnosisReady: boolean;
   diagnosisSummary: string;
   diagnosisType: string;
   diagnosisSeverity: string;
@@ -298,6 +299,7 @@ export function ObjectiveBuilder({
   projectName,
   websiteStage,
   diagnosisId,
+  diagnosisReady,
   diagnosisSummary,
   diagnosisType,
   diagnosisSeverity,
@@ -328,6 +330,7 @@ export function ObjectiveBuilder({
       ? `⚠ Campaign duration (${campaignDuration}) is shorter than business target (${targetPeriod}). Are you sure?`
       : null;
   const fromScratch = websiteStage === 'from_scratch';
+  const canGenerateObjective = Boolean(diagnosisId) && diagnosisReady;
 
   useEffect(() => {
     mounted.current = true;
@@ -427,6 +430,11 @@ export function ObjectiveBuilder({
   }, [draft, persistDraft]);
 
   async function generateObjective() {
+    if (!canGenerateObjective) {
+      setError('Wait until the diagnosis is completed before generating an objective.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setMessage(null);
@@ -994,19 +1002,30 @@ export function ObjectiveBuilder({
                 Draft autosave
               </div>
               <p className="mt-2 text-sm text-on-surface-variant">
-                We save the objective draft as you type, then send the full payload to n8n when you click generate.
+                {diagnosisReady
+                  ? 'We save the objective draft as you type, then send the full payload to n8n when you click generate.'
+                  : 'We save the draft, but you need a completed diagnosis before generating the objective.'}
               </p>
+              {!diagnosisReady ? (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                  Diagnosis is still processing. Open the diagnosis page and wait until the status becomes completed, then try again.
+                </p>
+              ) : null}
               <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={generateObjective}
-                  disabled={saving || submitting}
+                  disabled={saving || submitting || !canGenerateObjective}
                   className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Generating...
+                    </>
+                  ) : !canGenerateObjective ? (
+                    <>
+                      Wait for Diagnosis
                     </>
                   ) : (
                     <>

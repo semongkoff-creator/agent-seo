@@ -75,6 +75,7 @@ export default async function ProjectObjectivePage({ params }: PageParams) {
   }
 
   const latestDiagnosisRecord = latestDiagnosis as Record<string, unknown>;
+  const diagnosisReady = typeof latestDiagnosisRecord.status === 'string' ? latestDiagnosisRecord.status === 'completed' : false;
   const mergedDraft = mergeDraftPayloads(draft.items as Array<Record<string, unknown>>);
   const draftBusinessGoal = ((mergedDraft.business_goal as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
   const draftSeoBaseline = ((mergedDraft.seo_baseline as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
@@ -199,6 +200,7 @@ export default async function ProjectObjectivePage({ params }: PageParams) {
       projectName={typeof projectRecord.name === 'string' ? projectRecord.name : 'Project name not set'}
       websiteStage={typeof projectRecord.website_stage === 'string' ? projectRecord.website_stage : 'existing'}
       diagnosisId={typeof latestDiagnosisRecord.id === 'string' ? latestDiagnosisRecord.id : null}
+      diagnosisReady={diagnosisReady}
       diagnosisSummary={typeof latestDiagnosisRecord.diagnosis_summary === 'string' ? latestDiagnosisRecord.diagnosis_summary : 'Use the latest diagnosis as the objective reference.'}
       diagnosisType={typeof latestDiagnosisRecord.primary_problem_type === 'string' ? latestDiagnosisRecord.primary_problem_type.replace(/_/g, ' ') : 'mixed'}
       diagnosisSeverity={typeof latestDiagnosisRecord.severity === 'string' ? latestDiagnosisRecord.severity : 'medium'}
