@@ -128,7 +128,7 @@ function buildDrafts(projectId) {
   return Object.entries(KAITECH_PAYLOAD).map(([step, payload]) => ({
     project_id: projectId,
     step_number: Number(step),
-    sub_step: String(step),
+    sub_step: Number(step),
     payload,
     is_draft: true
   }));

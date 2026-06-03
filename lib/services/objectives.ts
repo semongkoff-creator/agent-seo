@@ -136,7 +136,7 @@ export async function saveObjectiveInputs(userId: string, projectId: string, inp
     .insert({
       project_id: projectId,
       step_number: 2,
-      sub_step: 'objective',
+      sub_step: 7,
       payload: input,
       is_draft: true
     })

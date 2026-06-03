@@ -111,7 +111,7 @@ export async function getLatestIdentifyResult(userId: string, projectId: string)
     .select('*')
     .eq('project_id', projectId)
     .eq('step_number', 1)
-    .eq('sub_step', 'submit')
+    .eq('sub_step', 0)
     .eq('is_draft', false)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -141,15 +141,14 @@ export async function saveIdentifyStep(
     notFound('Project not found');
   }
 
-  const subStep = String(stepNumber);
-  await db.from('seo_inputs').delete().eq('project_id', projectId).eq('step_number', stepNumber).eq('sub_step', subStep).eq('is_draft', true);
+  await db.from('seo_inputs').delete().eq('project_id', projectId).eq('step_number', stepNumber).eq('sub_step', stepNumber).eq('is_draft', true);
 
   const { data, error } = await db
     .from('seo_inputs')
     .insert({
       project_id: projectId,
       step_number: stepNumber,
-      sub_step: subStep,
+      sub_step: stepNumber,
       payload: input,
       is_draft: true
     })
@@ -208,7 +207,7 @@ export async function submitIdentify(userId: string, projectId: string) {
       .insert({
         project_id: projectId,
         step_number: 1,
-        sub_step: 'submit',
+        sub_step: 0,
         payload: sanitizedMergedPayload,
         is_draft: false
       })

@@ -57,7 +57,7 @@ create table if not exists public.seo_inputs (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   step_number integer not null,
-  sub_step text not null,
+  sub_step integer not null,
   payload jsonb not null,
   is_draft boolean not null default true,
   created_at timestamptz not null default now()

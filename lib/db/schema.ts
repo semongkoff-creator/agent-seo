@@ -180,7 +180,7 @@ export const seoInputs = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     stepNumber: integer('step_number').notNull(),
-    subStep: text('sub_step').notNull(),
+    subStep: integer('sub_step').notNull(),
     payload: jsonb('payload').notNull(),
     isDraft: boolean('is_draft').notNull().default(true),
     createdAt
