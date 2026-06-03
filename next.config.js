@@ -7,8 +7,6 @@ function validateEnv() {
     'SUPABASE_SERVICE_ROLE_KEY',
     'N8N_WEBHOOK_SECRET',
     'APP_WEBHOOK_SECRET',
-    'UPSTASH_REDIS_REST_URL',
-    'UPSTASH_REDIS_REST_TOKEN',
     'ENCRYPTION_KEY',
     'APP_URL'
   ];

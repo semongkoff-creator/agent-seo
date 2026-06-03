@@ -14,8 +14,10 @@ Prototype HTML reference + upcoming Next.js app foundation.
 2. Copy `.env.example` to `.env.local` and fill in the values.
 3. For Supabase, set `DATABASE_URL` and `DIRECT_URL` to your pooler URLs, and fill `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 4. For n8n, set the production workflow URLs. In this repo, `N8N_IDENTIFY_WEBHOOK_URL` is used for identify and `N8N_OBJECTIVE_WEBHOOK_URL` is used for objective. `N8N_WEBHOOK_URL` remains an optional shared fallback, then fill `N8N_WEBHOOK_SECRET` for BE -> n8n signing and `APP_WEBHOOK_SECRET` for n8n -> BE callback verification.
-5. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
-6. Start development with `pnpm dev`.
+5. `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are optional. If they are unset, rate limiting falls back to a no-op mode.
+6. Set `APP_URL` to your production domain before deploying, because auth redirects and webhook callbacks use it.
+7. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
+8. Start development with `pnpm dev`.
 
 ## Scripts
 
@@ -41,4 +43,5 @@ Prototype HTML reference + upcoming Next.js app foundation.
 - n8n callback requests should send `x-n8n-signature` and `x-n8n-timestamp`, with the signature computed from `timestamp.body` using `APP_WEBHOOK_SECRET`.
 - Authenticated API routes accept either `Authorization: Bearer <supabase-access-token>` or the internal `x-user-id` test header.
 - Auth routes also set HttpOnly cookies (`seo-agent-access-token` and `seo-agent-refresh-token`) after login/register/refresh/OAuth callback.
+- Rate limiting uses Upstash Redis when present, but the app still runs if those env vars are omitted.
 - This repo currently uses Drizzle ORM. I did not switch it to Prisma because that would duplicate the data layer and slow the rewrite down.

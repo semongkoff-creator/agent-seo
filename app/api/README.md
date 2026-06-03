@@ -32,3 +32,4 @@ Webhook note:
 - Auth login/register/refresh/OAuth callback routes also set HttpOnly cookies so browser sessions work without manual token storage.
 - `POST /api/integrations/{provider}` stores an integration connection with optional API key and property payload, and `DELETE` disconnects it.
 - `GET /api/diagnoses/{id}/stream` is the live diagnosis monitor stream used by the diagnosis page. It subscribes to Supabase Realtime on the server and emits SSE events to the browser.
+- Upstash Redis rate limiting is optional. If the env vars are absent, the app falls back to a no-op limiter.
