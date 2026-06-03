@@ -10,6 +10,20 @@ export const objectiveTypeSchema = z.enum([
   'mixed'
 ]);
 
+export const diagnosisProblemTypeSchema = z.enum([
+  'technical_bottleneck',
+  'relevance_gap',
+  'authority_deficit',
+  'conversion_pitfall',
+  'from_scratch',
+  'mixed',
+  'technical_recovery',
+  'qualified_traffic',
+  'authority_growth',
+  'conversion_improvement',
+  'foundation_building'
+]);
+
 export const achievabilityScoreSchema = z.enum(['low', 'moderate', 'high']);
 export const budgetLevelSchema = z.enum(['low', 'medium', 'high']);
 export const targetPeriodSchema = z.enum(['3 months', '6 months', '9 months', '12 months']);
@@ -57,7 +71,7 @@ export const objectiveInputSchema = z
 
 export const objectiveDiagnosisContextSchema = z
   .object({
-    primary_problem_type: objectiveTypeSchema,
+    primary_problem_type: diagnosisProblemTypeSchema,
     secondary_problem_type: z.string().trim().min(1).nullable().optional(),
     severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
     confidence_score: z.number().min(0).max(100).optional(),
