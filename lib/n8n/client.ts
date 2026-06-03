@@ -15,10 +15,18 @@ function signPayload(body: string, secret: string) {
 
 function resolveWebhookUrl(action: N8nTriggerPayload['action']) {
   if (action === 'identify_problem') {
-    return process.env.N8N_IDENTIFY_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || null;
+    return (
+      process.env.N8N_IDENTIFY_WEBHOOK_URL ||
+      process.env.N8N_WEBHOOK_URL ||
+      'https://lab.hellobotkilat.my.id/webhook/seo-agent/identify-problem'
+    );
   }
 
-  return process.env.N8N_OBJECTIVE_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL || null;
+  return (
+    process.env.N8N_OBJECTIVE_WEBHOOK_URL ||
+    process.env.N8N_WEBHOOK_URL ||
+    'https://lab.hellobotkilat.my.id/webhook/seo-agent/define-objective'
+  );
 }
 
 export async function triggerJob(payload: N8nTriggerPayload) {
