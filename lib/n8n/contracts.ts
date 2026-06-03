@@ -42,6 +42,7 @@ export type ObjectiveWorkflowPayload = {
   objective: {
     id: string;
   };
+  diagnosisResult: Record<string, unknown>;
   objectiveInput: Record<string, unknown>;
 };
 
@@ -103,6 +104,7 @@ export function buildObjectiveWorkflowPayload(input: {
   projectId: string;
   diagnosisId: string;
   objectiveId: string;
+  diagnosisResult: Record<string, unknown>;
   objectiveInput: Record<string, unknown>;
   submittedAt?: string;
 }): ObjectiveWorkflowPayload {
@@ -123,6 +125,7 @@ export function buildObjectiveWorkflowPayload(input: {
     objective: {
       id: input.objectiveId
     },
+    diagnosisResult: input.diagnosisResult,
     objectiveInput: input.objectiveInput
   };
 }

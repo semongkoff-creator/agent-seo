@@ -3,6 +3,7 @@ import { AppError } from '@/lib/errors';
 import { buildObjectiveWorkflowPayload } from '@/lib/n8n/contracts';
 import { triggerJob } from '@/lib/n8n/client';
 import type {
+  ObjectiveGenerationInput,
   ObjectiveInput,
   ObjectiveListQuery,
   RegenerateObjectiveInput
@@ -137,14 +138,13 @@ export async function saveObjectiveInputs(userId: string, projectId: string, inp
   return data;
 }
 
-export async function generateObjective(userId: string, projectId: string, input: ObjectiveInput) {
+export async function generateObjective(userId: string, projectId: string, input: ObjectiveGenerationInput) {
   const { data: diagnosis } = await db
     .from('seo_diagnoses')
     .select('*')
     .eq('project_id', projectId)
+    .eq('id', input.diagnosis_id)
     .eq('status', 'completed')
-    .order('completed_at', { ascending: false })
-    .limit(1)
     .maybeSingle();
 
   if (!diagnosis) {
@@ -155,10 +155,25 @@ export async function generateObjective(userId: string, projectId: string, input
     .from('seo_objectives')
     .insert({
       project_id: projectId,
-      diagnosis_id: diagnosis.id,
-      objective_type: 'mixed',
+      diagnosis_id: input.diagnosis_id,
+      objective_type: input.diagnosis_result.primary_problem_type === 'authority_growth'
+        ? 'authority_growth'
+        : input.diagnosis_result.primary_problem_type === 'qualified_traffic'
+          ? 'qualified_traffic'
+          : input.diagnosis_result.primary_problem_type === 'conversion_improvement'
+            ? 'conversion_improvement'
+            : input.diagnosis_result.primary_problem_type === 'technical_recovery'
+              ? 'technical_recovery'
+              : input.diagnosis_result.primary_problem_type === 'foundation_building'
+                ? 'foundation_building'
+                : 'mixed',
       smart_objective: 'Pending objective generation',
-      input_metrics: input,
+      input_metrics: {
+        diagnosis_result: input.diagnosis_result,
+        business_goal: input.business_goal,
+        seo_baseline: input.seo_baseline,
+        constraints: input.constraints
+      },
       output_metrics: {},
       outcome_metrics: {},
       baseline: {},
@@ -183,7 +198,12 @@ export async function generateObjective(userId: string, projectId: string, input
       project_id: projectId,
       type: 'define_objective',
       status: 'queued',
-      request_payload: { projectId, objectiveId: objective.id, diagnosisId: diagnosis.id, input },
+      request_payload: {
+        projectId,
+        objectiveId: objective.id,
+        diagnosisId: input.diagnosis_id,
+        input
+      },
       response_payload: {}
     })
     .select('*')
@@ -218,9 +238,14 @@ export async function generateObjective(userId: string, projectId: string, input
       payload: buildObjectiveWorkflowPayload({
         jobId: job.id,
         projectId,
-        diagnosisId: diagnosis.id,
+        diagnosisId: input.diagnosis_id,
         objectiveId: objective.id,
-        objectiveInput: input
+        diagnosisResult: input.diagnosis_result,
+        objectiveInput: {
+          business_goal: input.business_goal,
+          seo_baseline: input.seo_baseline,
+          constraints: input.constraints
+        }
       }),
       callbackUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/n8n/objective-complete`
     });

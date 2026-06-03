@@ -41,6 +41,36 @@ export async function getIdentifyDraft(userId: string, projectId: string) {
   };
 }
 
+export async function getLatestIdentifyResult(userId: string, projectId: string) {
+  const { data: project } = await db
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!project) {
+    notFound('Project not found');
+  }
+
+  const { data, error } = await db
+    .from('seo_inputs')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('step_number', 1)
+    .eq('sub_step', 'submit')
+    .eq('is_draft', false)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to load latest identify result', 500, { cause: error.message });
+  }
+
+  return data ?? null;
+}
+
 export async function saveIdentifyStep(
   userId: string,
   projectId: string,
