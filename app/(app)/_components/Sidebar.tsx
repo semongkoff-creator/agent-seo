@@ -2,10 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { HelpCircle, Plus, User } from 'lucide-react';
 import { primaryNavItems } from './nav-data';
 
 function isActive(pathname: string, href: string) {
+  if (href === '/dashboard') {
+    return pathname === '/' || pathname === '/dashboard';
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -50,6 +54,23 @@ export function Sidebar() {
           <Plus className="h-4 w-4" />
           New Project
         </Link>
+
+        <div className="space-y-1">
+          <Link
+            href="/settings"
+            className="flex min-h-11 items-center gap-md rounded-lg px-md py-sm text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <User className="h-5 w-5" />
+            <span className="text-body-md">Profile</span>
+          </Link>
+          <Link
+            href="/settings"
+            className="flex min-h-11 items-center gap-md rounded-lg px-md py-sm text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <HelpCircle className="h-5 w-5" />
+            <span className="text-body-md">Help</span>
+          </Link>
+        </div>
       </div>
     </aside>
   );
