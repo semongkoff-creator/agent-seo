@@ -4,6 +4,8 @@ import { BottomNav } from './_components/BottomNav';
 import { Sidebar } from './_components/Sidebar';
 import { TopBar } from './_components/TopBar';
 
+export const dynamic = 'force-dynamic';
+
 export default function AppLayout({
   children
 }: Readonly<{

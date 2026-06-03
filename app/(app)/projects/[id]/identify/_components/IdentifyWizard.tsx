@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -214,27 +214,7 @@ export function IdentifyWizard({
     hasMounted.current = true;
   }, []);
 
-  useEffect(() => {
-    if (!hasMounted.current) {
-      return;
-    }
-
-    if (saveTimer.current) {
-      window.clearTimeout(saveTimer.current);
-    }
-
-    saveTimer.current = window.setTimeout(() => {
-      void persistDraft();
-    }, 1000);
-
-    return () => {
-      if (saveTimer.current) {
-        window.clearTimeout(saveTimer.current);
-      }
-    };
-  }, [formState]);
-
-  async function persistDraft() {
+  const persistDraft = useCallback(async () => {
     setSaving(true);
     setError(null);
 
@@ -259,7 +239,27 @@ export function IdentifyWizard({
     } finally {
       setSaving(false);
     }
-  }
+  }, [currentStep, formState, projectId]);
+
+  useEffect(() => {
+    if (!hasMounted.current) {
+      return;
+    }
+
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current);
+    }
+
+    saveTimer.current = window.setTimeout(() => {
+      void persistDraft();
+    }, 1000);
+
+    return () => {
+      if (saveTimer.current) {
+        window.clearTimeout(saveTimer.current);
+      }
+    };
+  }, [formState, persistDraft]);
 
   async function handleContinue() {
     setSubmitting(true);

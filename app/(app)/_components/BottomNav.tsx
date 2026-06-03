@@ -10,7 +10,7 @@ const items = [
   { href: '/diagnosis', label: 'Diagnoses', icon: Activity },
   { href: '/campaign', label: 'Campaigns', icon: Megaphone },
   { href: '/settings', label: 'Settings', icon: Settings }
-];
+] as const;
 
 export function BottomNav() {
   const pathname = usePathname();

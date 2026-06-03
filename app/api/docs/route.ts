@@ -1,6 +1,8 @@
 import { AppError } from '@/lib/errors';
 import { buildOpenApiSpec } from '@/lib/openapi';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   if (process.env.NODE_ENV !== 'development') {
     throw new AppError('NOT_FOUND', 'Docs are only available in development', 404);

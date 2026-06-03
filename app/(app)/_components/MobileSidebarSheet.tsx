@@ -66,7 +66,7 @@ export function MobileSidebarSheet() {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href as any}
                     onClick={() => setOpen(false)}
                     className={[
                       'flex min-h-11 items-center gap-md rounded-lg px-md py-sm transition-colors',

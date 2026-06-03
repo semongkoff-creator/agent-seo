@@ -31,7 +31,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as any}
               className={[
                 'flex min-h-11 items-center gap-md rounded-lg px-md py-sm transition-colors',
                 active

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -318,9 +318,9 @@ export function ObjectiveBuilder({
   const preview = useMemo(() => buildObjectivePreview(draft, projectName, diagnosisDirection), [draft, projectName, diagnosisDirection]);
   const achievability = useMemo(() => calculateAchievability(draft, websiteStage), [draft, websiteStage]);
 
-  const businessGoal = (draft.business_goal ?? {}) as Record<string, unknown>;
-  const baseline = (draft.seo_baseline ?? {}) as Record<string, unknown>;
-  const constraints = (draft.constraints ?? {}) as Record<string, unknown>;
+  const businessGoal = useMemo(() => (draft.business_goal ?? {}) as Record<string, unknown>, [draft.business_goal]);
+  const baseline = useMemo(() => (draft.seo_baseline ?? {}) as Record<string, unknown>, [draft.seo_baseline]);
+  const constraints = useMemo(() => (draft.constraints ?? {}) as Record<string, unknown>, [draft.constraints]);
   const targetPeriod = toText(businessGoal.target_period, '6 months');
   const campaignDuration = toText(constraints.campaign_duration, targetPeriod);
   const durationWarning =
@@ -332,26 +332,6 @@ export function ObjectiveBuilder({
   useEffect(() => {
     mounted.current = true;
   }, []);
-
-  useEffect(() => {
-    if (!mounted.current) {
-      return;
-    }
-
-    if (timer.current) {
-      window.clearTimeout(timer.current);
-    }
-
-    timer.current = window.setTimeout(() => {
-      void persistDraft();
-    }, 900);
-
-    return () => {
-      if (timer.current) {
-        window.clearTimeout(timer.current);
-      }
-    };
-  }, [draft]);
 
   function setNested(path: 'business_goal' | 'seo_baseline' | 'constraints', key: string, value: unknown) {
     setDraft((current) => ({
@@ -370,7 +350,7 @@ export function ObjectiveBuilder({
     }
   }
 
-  async function persistDraft() {
+  const persistDraft = useCallback(async () => {
     setSaving(true);
     setError(null);
 
@@ -424,7 +404,27 @@ export function ObjectiveBuilder({
     } finally {
       setSaving(false);
     }
-  }
+  }, [businessGoal, baseline, campaignDuration, constraints, projectId]);
+
+  useEffect(() => {
+    if (!mounted.current) {
+      return;
+    }
+
+    if (timer.current) {
+      window.clearTimeout(timer.current);
+    }
+
+    timer.current = window.setTimeout(() => {
+      void persistDraft();
+    }, 900);
+
+    return () => {
+      if (timer.current) {
+        window.clearTimeout(timer.current);
+      }
+    };
+  }, [draft, persistDraft]);
 
   async function generateObjective() {
     setSubmitting(true);
@@ -551,7 +551,7 @@ export function ObjectiveBuilder({
                 <div className="flex items-start gap-3">
                   <Sparkles className="mt-1 h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-semibold">Your website is at "from scratch" stage.</p>
+                    <p className="font-semibold">Your website is at &quot;from scratch&quot; stage.</p>
                     <p className="mt-2 text-sm leading-6 text-on-primary-container">
                       Baseline values are set to 0. We&apos;ll create a foundation-building objective.
                     </p>

@@ -43,7 +43,7 @@ export function PageHeader({
               action.href ? (
                 <Link
                   key={action.label}
-                  href={action.href}
+                  href={action.href as any}
                   className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90"
                 >
                   {action.label}

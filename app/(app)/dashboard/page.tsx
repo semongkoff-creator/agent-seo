@@ -143,7 +143,7 @@ function ProjectRow({ project }: { project: ProjectRowData }) {
 function DiagnosisCard({ diagnosis }: { diagnosis: (typeof diagnoses)[number] }) {
   return (
     <Link
-      href={diagnosis.href}
+      href={diagnosis.href as any}
       className="snap-start rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm transition-transform hover:-translate-y-0.5 md:p-5"
     >
       <div className="flex items-start justify-between gap-3">
@@ -165,7 +165,7 @@ function DiagnosisCard({ diagnosis }: { diagnosis: (typeof diagnoses)[number] })
 function InsightCard({ insight }: { insight: InsightRowData }) {
   return (
     <Link
-      href={insight.href}
+      href={insight.href as any}
       className="rounded-2xl border border-outline-variant bg-primary-container p-5 text-on-primary-container shadow-sm"
     >
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-primary-container/80">

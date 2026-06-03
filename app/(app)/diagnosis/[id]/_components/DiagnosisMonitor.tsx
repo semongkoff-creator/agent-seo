@@ -64,7 +64,7 @@ export function DiagnosisMonitor({ diagnosisId, projectName }: DiagnosisMonitorP
       active = false;
       window.clearInterval(interval);
     };
-  }, [diagnosisId]);
+  }, [diagnosisId, router]);
 
   useEffect(() => {
     const source = new EventSource(`/api/diagnoses/${diagnosisId}/stream`);
