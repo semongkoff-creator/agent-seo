@@ -1,21 +1,14 @@
 import Link from 'next/link';
 import {
   ArrowUpRight,
-  BarChart3,
   Activity,
   Brain,
   ChevronRight,
-  Clock3,
-  FolderPlus,
-  Route,
-  Sparkles,
-  Target,
-  TriangleAlert
+  Clock3
 } from 'lucide-react';
 import { HorizontalScrollSnap } from '@/components/ui/horizontal-scroll-snap';
 import { PageHeader } from '@/components/ui/page-header';
 import { SeverityBadge } from '@/components/ui/severity-badge';
-import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview, listDashboardInsights } from '@/lib/services/dashboard';
 import { listDiagnoses } from '@/lib/services/diagnoses';
@@ -46,42 +39,10 @@ type InsightRowData = {
   href: string;
 };
 
-type WorkflowStep = {
-  title: string;
-  body: string;
-  action: string;
-  href: string;
-  icon: typeof FolderPlus;
-};
-
 type ActivityRow = {
   event_type?: string | null;
   created_at?: string | null;
 };
-
-const workflowSteps: WorkflowStep[] = [
-  {
-    title: 'Set up a project',
-    body: 'Capture the domain, audience, and business context so n8n has a clean starting point.',
-    action: 'Open project setup',
-    href: '/projects#new-project',
-    icon: FolderPlus
-  },
-  {
-    title: 'Run identify',
-    body: 'Send the brief to n8n to generate the first diagnosis and collect the signal set.',
-    action: 'Open identify flow',
-    href: '/identify',
-    icon: Route
-  },
-  {
-    title: 'Define an objective',
-    body: 'Turn the diagnosis into a SMART objective once the problem statement is clear.',
-    action: 'Open objective builder',
-    href: '/objective',
-    icon: Sparkles
-  }
-];
 
 const activityLabels: Record<string, string> = {
   project_created: 'Project created',
@@ -225,32 +186,6 @@ function InsightCard({ insight }: { insight: InsightRowData }) {
   );
 }
 
-function WorkflowCard({ step }: { step: WorkflowStep }) {
-  const Icon = step.icon;
-
-  return (
-    <Link
-      href={step.href as any}
-      className="rounded-2xl border border-outline-variant bg-surface-container-low p-4 transition-transform hover:-translate-y-0.5"
-    >
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-primary-container p-3 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Step</p>
-          <h3 className="mt-1 text-lg font-semibold text-on-surface">{step.title}</h3>
-        </div>
-      </div>
-      <p className="mt-3 text-sm leading-6 text-on-surface-variant">{step.body}</p>
-      <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-        {step.action}
-        <ArrowUpRight className="h-4 w-4" />
-      </div>
-    </Link>
-  );
-}
-
 function mapInsights(source: Awaited<ReturnType<typeof listDashboardInsights>>['items']): InsightRowData[] {
   return source.map((item, index) => {
     const record = item as Record<string, unknown>;
@@ -344,31 +279,6 @@ export default async function DashboardPage() {
   const projectData = await listProjects(user.id, { page: 1, limit: 3 });
   const diagnosisData = await listDiagnoses(user.id, { page: 1, limit: 3 });
   const insightData = await listDashboardInsights(user.id);
-
-  const metrics = [
-    {
-      label: 'Aggregate Health',
-      value: `${Math.max(0, 100 - overview.activeProjectCount * 3.4).toFixed(1)}%`,
-      delta: `+${overview.completedObjectives} objectives`,
-      tone: 'text-primary',
-      icon: BarChart3
-    },
-    {
-      label: 'Active Alerts',
-      value: String(Math.max(0, overview.projectCount - overview.completedDiagnoses)),
-      delta: `${overview.completedDiagnoses} diagnoses`,
-      tone: 'text-error',
-      icon: TriangleAlert
-    },
-    {
-      label: 'Goals In Motion',
-      value: String(overview.completedObjectives),
-      delta: `${overview.activeProjectCount} active projects`,
-      tone: 'text-secondary',
-      icon: Target
-    }
-  ] as const;
-
   const projectRows = mapProjectRows(projectData.items);
   const diagnosisRows = mapDiagnoses(diagnosisData.items);
   const insights = mapInsights(insightData.items);
@@ -466,68 +376,6 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="border-t border-outline-variant bg-surface-container-low px-5 py-5 sm:px-6 sm:py-6 lg:border-l lg:border-t-0 lg:px-7 lg:py-8">
-              <div className="flex h-full flex-col justify-between gap-5">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                    Recommended action
-                  </p>
-                  <h3 className="mt-2 text-xl font-semibold text-on-surface">{nextAction.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-on-surface-variant">{nextAction.body}</p>
-                </div>
-
-                <div className="space-y-3">
-                  <Link
-                    href={nextAction.href as any}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90"
-                  >
-                    {nextAction.action}
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                  <div className="grid grid-cols-2 gap-3">
-                    {activityData.counts.map((activity) => (
-                      <div key={activity.label} className="rounded-2xl border border-outline-variant bg-white p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                          {activity.label}
-                        </p>
-                        <p className="mt-2 text-2xl font-semibold text-on-surface">{activity.count}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {metrics.map((metric) => (
-            <StatCard
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-              delta={metric.delta}
-              icon={metric.icon}
-              toneClassName={metric.tone}
-            />
-          ))}
-        </div>
-
-        <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-sm">
-          <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick Start</p>
-              <h2 className="mt-1 text-lg font-semibold text-on-surface">The shortest path from brief to workflow</h2>
-            </div>
-            <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
-              Open projects
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 px-4 py-4 md:grid-cols-3 md:px-6">
-            {workflowSteps.map((step) => (
-              <WorkflowCard key={step.title} step={step} />
-            ))}
           </div>
         </section>
 

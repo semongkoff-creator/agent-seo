@@ -1,7 +1,6 @@
 'use client';
 
-import { Search, Bell, History, ArrowUpRight } from 'lucide-react';
-import Link from 'next/link';
+import { Search, Bell, History } from 'lucide-react';
 import { MobileSidebarSheet } from './MobileSidebarSheet';
 
 export function TopBar() {
@@ -44,19 +43,6 @@ export function TopBar() {
           >
             <History className="h-5 w-5" />
           </button>
-          <Link
-            href="/projects"
-            className="hidden min-h-11 items-center justify-center rounded-lg border border-outline-variant px-4 py-3 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high md:inline-flex"
-          >
-            Export Data
-          </Link>
-          <Link
-            href="/identify"
-            className="hidden min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90 md:inline-flex"
-          >
-            Run Audit
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </header>

@@ -1,10 +1,8 @@
 import Link from 'next/link';
-import { ArrowUpRight, LayoutGrid, ShieldCheck, Sparkles, FolderKanban, Target, Activity } from 'lucide-react';
+import { ArrowUpRight, FolderKanban, Target } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
 import { CreateProjectModal } from './_components/CreateProjectModal';
 import { requireUser } from '@/lib/auth/session';
-import { getDashboardOverview } from '@/lib/services/dashboard';
 import { listProjects } from '@/lib/services/projects';
 import { formatWibDate } from '@/lib/time';
 
@@ -14,21 +12,7 @@ function formatProjectUrl(record: Record<string, unknown>) {
 
 export default async function ProjectsPage() {
   const user = await requireUser();
-  const [overview, projectsData] = await Promise.all([
-    getDashboardOverview(user.id),
-    listProjects(user.id, { page: 1, limit: 12 })
-  ]);
-
-  const usage = [
-    { label: 'Audit quota used', value: `${projectsData.items.length} / 25` },
-    { label: 'Diagnosis runs', value: String(overview.completedDiagnoses) },
-    { label: 'Objectives generated', value: String(overview.completedObjectives) }
-  ] as const;
-
-  const activeProjects = projectsData.items.filter((project) => {
-    const record = project as Record<string, unknown>;
-    return typeof record.status !== 'string' || record.status !== 'archived';
-  }).length;
+  const projectsData = await listProjects(user.id, { page: 1, limit: 12 });
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -38,33 +22,7 @@ export default async function ProjectsPage() {
           title="Active Projects"
           description="Create a project, run identify, then define the objective. This page keeps the core workflow in one place."
           actions={[{ label: 'Open Identify Hub', href: '/identify' }]}
-          >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                Health Average
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-on-surface">
-                {Math.max(0, 100 - overview.activeProjectCount * 3).toFixed(0)}%
-              </p>
-            </div>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                <FolderKanban className="h-4 w-4 text-primary" />
-                Projects Monitored
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-on-surface">{projectsData.items.length}</p>
-            </div>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                <Activity className="h-4 w-4 text-primary" />
-                Active Projects
-              </div>
-              <p className="mt-3 text-2xl font-semibold text-on-surface">{activeProjects}</p>
-            </div>
-          </div>
-        </PageHeader>
+        />
 
         <div id="new-project" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2">
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
