@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "vitest",
+    "seed:kaitech": "node scripts/seed-kaitech.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },

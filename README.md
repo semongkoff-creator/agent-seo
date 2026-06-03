@@ -23,6 +23,11 @@ Admin bootstrap:
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_FULL_NAME` can be set locally for the helper script at `scripts/seed-admin.mjs`.
 - The script creates or updates the Supabase auth user and mirrors it into the `users` table with the admin role.
 
+Kaitech seed:
+- Run `pnpm seed:kaitech` to create a prefilled Kaitech project for `KAITECH_SEED_EMAIL` (defaults to `admin@agent.seo`).
+- The script deletes any existing Kaitech project for that user, recreates it, and inserts the six Identify draft steps.
+- Set `KAITECH_SEED_EMAIL` in `.env.local` if you want to seed a different account.
+
 ## Scripts
 
 - `pnpm dev`
