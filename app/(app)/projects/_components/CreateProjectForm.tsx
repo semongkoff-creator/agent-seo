@@ -113,7 +113,7 @@ export function CreateProjectForm() {
             value={form.websiteUrl}
             onChange={(event) => updateField('websiteUrl', event.target.value)}
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="https://example.com"
+            placeholder="https://yourdomain.com"
           />
         </label>
         <label className="flex flex-col gap-2">

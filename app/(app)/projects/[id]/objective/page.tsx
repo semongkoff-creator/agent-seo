@@ -53,7 +53,7 @@ export default async function ProjectObjectivePage({ params }: PageParams) {
   const latestIdentifyPayload = (latestIdentify?.payload as Record<string, unknown> | undefined) ?? {};
   const projectRecord = {
     id: params.id,
-    name: latestIdentifyPayload.business_name ?? 'Untitled Project',
+    name: latestIdentifyPayload.business_name ?? 'Project name not set',
     website_url: latestIdentifyPayload.website_url,
     main_business_goal:
       typeof latestIdentifyPayload.main_business_goal === 'string' ? latestIdentifyPayload.main_business_goal : 'leads',
@@ -196,7 +196,7 @@ export default async function ProjectObjectivePage({ params }: PageParams) {
   return (
     <ObjectiveBuilder
       projectId={params.id}
-      projectName={typeof projectRecord.name === 'string' ? projectRecord.name : 'Untitled Project'}
+      projectName={typeof projectRecord.name === 'string' ? projectRecord.name : 'Project name not set'}
       websiteStage={typeof projectRecord.website_stage === 'string' ? projectRecord.website_stage : 'existing'}
       diagnosisId={typeof latestDiagnosisRecord.id === 'string' ? latestDiagnosisRecord.id : null}
       diagnosisSummary={typeof latestDiagnosisRecord.diagnosis_summary === 'string' ? latestDiagnosisRecord.diagnosis_summary : 'Use the latest diagnosis as the objective reference.'}

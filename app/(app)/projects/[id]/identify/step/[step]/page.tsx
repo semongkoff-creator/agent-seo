@@ -50,7 +50,7 @@ export default async function IdentifyStepPage({ params }: PageParams) {
   return (
     <IdentifyWizard
       projectId={params.id}
-      projectName={typeof projectRecord.name === 'string' ? projectRecord.name : 'Untitled Project'}
+      projectName={typeof projectRecord.name === 'string' ? projectRecord.name : 'Project name not set'}
       projectUrl={typeof projectRecord.website_url === 'string' && projectRecord.website_url ? projectRecord.website_url : 'Website not provided'}
       currentStep={parsedStep}
       initialDrafts={seedState}

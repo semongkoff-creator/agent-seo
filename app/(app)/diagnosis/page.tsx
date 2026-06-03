@@ -158,14 +158,22 @@ export default async function DiagnosesPage() {
             <RefreshCcw className="mx-auto h-6 w-6 text-primary" />
             <h2 className="mt-3 text-xl font-semibold text-on-surface">No diagnoses yet</h2>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Start from Identify to generate the first diagnostic pass for your projects.
+              Create a project first, then send it through Identify so n8n can generate the first diagnosis record.
             </p>
-            <Link
-              href="/identify"
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"
-            >
-              Start identify
-            </Link>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/projects#new-project"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"
+              >
+                Create project
+              </Link>
+              <Link
+                href="/projects"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm font-semibold text-on-surface"
+              >
+                Open projects
+              </Link>
+            </div>
           </div>
         )}
       </section>

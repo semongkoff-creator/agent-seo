@@ -142,14 +142,22 @@ export default async function ObjectivesPage() {
             <Target className="mx-auto h-6 w-6 text-primary" />
             <h2 className="mt-3 text-xl font-semibold text-on-surface">No objectives yet</h2>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Run a diagnosis and then open the project objective builder to generate the first SMART objective.
+              Once a diagnosis completes, the Objective builder can turn it into a SMART plan through n8n.
             </p>
-            <Link
-              href="/projects"
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"
-            >
-              Open projects
-            </Link>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/projects#new-project"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"
+              >
+                Create project
+              </Link>
+              <Link
+                href="/diagnosis"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm font-semibold text-on-surface"
+              >
+                Open diagnoses
+              </Link>
+            </div>
           </div>
         )}
       </section>

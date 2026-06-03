@@ -26,7 +26,7 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
     title: 'Tell us what the site sells',
     description: 'We use these basics to anchor crawl, keyword, and conversion analysis.',
     fields: [
-      { name: 'website_url', label: 'Website URL', type: 'text', placeholder: 'example.com' },
+      { name: 'website_url', label: 'Website URL', type: 'text', placeholder: 'yourdomain.com' },
       { name: 'business_name', label: 'Business Name', type: 'text', placeholder: 'Kaitech Studio' },
       {
         name: 'industry',
@@ -104,7 +104,7 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
     title: 'Capture crawl and rendering health',
     description: 'We want the diagnosis to know what search engines can and cannot access.',
     fields: [
-      { name: 'sitemap_url', label: 'Sitemap URL', type: 'text', placeholder: 'https://example.com/sitemap.xml' },
+      { name: 'sitemap_url', label: 'Sitemap URL', type: 'text', placeholder: 'https://yourdomain.com/sitemap.xml' },
       {
         name: 'robots_txt',
         label: 'robots.txt',
@@ -189,7 +189,7 @@ export const identifyStepOrder = [1, 2, 3, 4, 5, 6] as const;
 export const identifyStepTitles = identifyStepOrder.map((step) => identifyStepConfigs[step]);
 
 export function formatProjectLabel(name: string | null | undefined) {
-  return typeof name === 'string' && name.trim() ? name : 'Untitled Project';
+  return typeof name === 'string' && name.trim() ? name : 'Project name not set';
 }
 
 export function formatProjectUrl(value: string | null | undefined) {

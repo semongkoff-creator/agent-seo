@@ -52,7 +52,7 @@ export default async function IdentifyLandingPage() {
               projects.items.map((project) => {
                 const record = project as Record<string, unknown>;
                 const id = String(record.id ?? '');
-                const name = typeof record.name === 'string' && record.name ? record.name : 'Untitled Project';
+                const name = typeof record.name === 'string' && record.name ? record.name : 'Project name not set';
                 const url =
                   typeof record.website_url === 'string' && record.website_url ? record.website_url : 'Website not provided';
                 const stage = typeof record.website_stage === 'string' ? record.website_stage : 'existing';
