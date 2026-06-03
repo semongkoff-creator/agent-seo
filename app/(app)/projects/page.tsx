@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRight, LayoutGrid, ShieldCheck, Sparkles, FolderKanban, Target, Activity } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { CreateProjectForm } from './_components/CreateProjectForm';
 import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview } from '@/lib/services/dashboard';
 import { listProjects } from '@/lib/services/projects';
@@ -65,17 +66,7 @@ export default async function ProjectsPage() {
         </PageHeader>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Link
-            href="/identify"
-            className="flex min-h-24 items-center justify-between rounded-[28px] border-2 border-dashed border-outline-variant bg-white p-5 text-left transition-colors hover:border-primary hover:bg-primary/5"
-          >
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Add New</p>
-              <p className="mt-2 text-lg font-semibold text-on-surface">Launch a new identify flow</p>
-            </div>
-            <LayoutGrid className="h-6 w-6 text-primary" />
-          </Link>
-
+          <CreateProjectForm />
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick stats</p>
             <div className="mt-4 grid grid-cols-3 gap-3">
