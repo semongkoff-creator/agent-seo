@@ -36,9 +36,9 @@ export default async function ProjectsPage() {
         <PageHeader
           eyebrow="Projects"
           title="Active Projects"
-          description="Manage each connected domain from one place. Every project can jump into Identify, Objective, or Campaign in one click."
+          description="Create a project, run identify, then define the objective. This page keeps the core workflow in one place."
           actions={[{ label: 'Open Identify Hub', href: '/identify' }]}
-        >
+          >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
@@ -86,17 +86,27 @@ export default async function ProjectsPage() {
               hands it off cleanly.
             </div>
           </div>
-          <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick stats</p>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {usage.map((item) => (
-                <div key={item.label} className="rounded-xl bg-surface-container-low p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-base font-semibold text-on-surface">{item.value}</p>
-                </div>
-              ))}
+          <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">How it works</p>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl bg-surface-container-low p-4">
+                <p className="text-sm font-semibold text-on-surface">1. Create the project</p>
+                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                  Save the domain, target audience, and business goal so the workflow has the right starting point.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-surface-container-low p-4">
+                <p className="text-sm font-semibold text-on-surface">2. Run identify</p>
+                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                  The website sends the brief to n8n, which returns the first diagnosis and stores it in Supabase.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-surface-container-low p-4">
+                <p className="text-sm font-semibold text-on-surface">3. Define the objective</p>
+                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                  Turn the diagnosis into a SMART objective, then continue into campaign planning.
+                </p>
+              </div>
             </div>
           </div>
         </div>
