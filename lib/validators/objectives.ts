@@ -29,15 +29,20 @@ export const budgetLevelSchema = z.enum(['low', 'medium', 'high']);
 export const targetPeriodSchema = z.enum(['3 months', '6 months', '9 months', '12 months']);
 export const existingBrandStrengthSchema = z.enum(['low', 'medium', 'high']);
 
+const optionalTextSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+  z.string().trim().min(1).optional()
+);
+
 export const objectiveInputSchema = z
   .object({
     business_goal: z
       .object({
         main_business_goal: z.enum(['traffic', 'leads', 'sales', 'revenue', 'awareness', 'local_visibility']),
-        business_target_value: z.string().trim().min(1).optional(),
+        business_target_value: optionalTextSchema,
         target_period: targetPeriodSchema.optional(),
-        priority_product_or_service: z.string().trim().min(1).optional(),
-        target_market: z.string().trim().min(1).optional(),
+        priority_product_or_service: optionalTextSchema,
+        target_market: optionalTextSchema,
         average_order_value: z.number().nonnegative().optional()
       })
       .passthrough(),

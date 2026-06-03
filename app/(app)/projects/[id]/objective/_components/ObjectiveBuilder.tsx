@@ -98,6 +98,10 @@ function toText(value: unknown, fallback = '') {
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
 
+function toOptionalText(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
 function toNumber(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -361,10 +365,10 @@ export function ObjectiveBuilder({
       const payload = objectiveInputSchema.parse({
         business_goal: {
           main_business_goal: businessGoal.main_business_goal,
-          business_target_value: toText(businessGoal.business_target_value),
+          business_target_value: toOptionalText(businessGoal.business_target_value),
           target_period: toText(businessGoal.target_period, '6 months'),
-          priority_product_or_service: toText(businessGoal.priority_product_or_service),
-          target_market: toText(businessGoal.target_market),
+          priority_product_or_service: toOptionalText(businessGoal.priority_product_or_service),
+          target_market: toOptionalText(businessGoal.target_market),
           average_order_value: toNumber(businessGoal.average_order_value) || undefined
         },
         seo_baseline: {
@@ -451,10 +455,10 @@ export function ObjectiveBuilder({
           diagnosis_result: diagnosisResult,
           business_goal: {
             main_business_goal: businessGoal.main_business_goal,
-            business_target_value: toText(businessGoal.business_target_value),
+            business_target_value: toOptionalText(businessGoal.business_target_value),
             target_period: toText(businessGoal.target_period, '6 months'),
-            priority_product_or_service: toText(businessGoal.priority_product_or_service),
-            target_market: toText(businessGoal.target_market),
+            priority_product_or_service: toOptionalText(businessGoal.priority_product_or_service),
+            target_market: toOptionalText(businessGoal.target_market),
             average_order_value: toNumber(businessGoal.average_order_value) || undefined
           },
           seo_baseline: {
