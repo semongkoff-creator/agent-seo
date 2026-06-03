@@ -9,16 +9,21 @@ export type IdentifyWorkflowPayload = {
   app: 'seo-agent';
   action: 'identify_problem';
   submittedAt: string;
+  job_id: string;
   job: {
     id: string;
     type: 'identify_problem';
   };
+  project_id: string;
   project: {
     id: string;
   };
+  diagnosis_id: string;
   diagnosis: {
     id: string;
   };
+  identify_drafts: IdentifyWorkflowDraft[];
+  identify_merged: Record<string, unknown>;
   identify: {
     drafts: IdentifyWorkflowDraft[];
     merged: Record<string, unknown>;
@@ -29,19 +34,25 @@ export type ObjectiveWorkflowPayload = {
   app: 'seo-agent';
   action: 'define_objective';
   submittedAt: string;
+  job_id: string;
   job: {
     id: string;
     type: 'define_objective';
   };
+  project_id: string;
   project: {
     id: string;
   };
+  diagnosis_id: string;
   diagnosis: {
     id: string;
   };
+  objective_id: string;
   objective: {
     id: string;
   };
+  diagnosis_result: Record<string, unknown>;
+  objective_input: Record<string, unknown>;
   diagnosisResult: Record<string, unknown>;
   objectiveInput: Record<string, unknown>;
 };
@@ -82,16 +93,21 @@ export function buildIdentifyWorkflowPayload(input: {
     app: 'seo-agent',
     action: 'identify_problem',
     submittedAt: input.submittedAt ?? new Date().toISOString(),
+    job_id: input.jobId,
     job: {
       id: input.jobId,
       type: 'identify_problem'
     },
+    project_id: input.projectId,
     project: {
       id: input.projectId
     },
+    diagnosis_id: input.diagnosisId,
     diagnosis: {
       id: input.diagnosisId
     },
+    identify_drafts: input.drafts,
+    identify_merged: input.merged,
     identify: {
       drafts: input.drafts,
       merged: input.merged
@@ -112,19 +128,25 @@ export function buildObjectiveWorkflowPayload(input: {
     app: 'seo-agent',
     action: 'define_objective',
     submittedAt: input.submittedAt ?? new Date().toISOString(),
+    job_id: input.jobId,
     job: {
       id: input.jobId,
       type: 'define_objective'
     },
+    project_id: input.projectId,
     project: {
       id: input.projectId
     },
+    diagnosis_id: input.diagnosisId,
     diagnosis: {
       id: input.diagnosisId
     },
+    objective_id: input.objectiveId,
     objective: {
       id: input.objectiveId
     },
+    diagnosis_result: input.diagnosisResult,
+    objective_input: input.objectiveInput,
     diagnosisResult: input.diagnosisResult,
     objectiveInput: input.objectiveInput
   };

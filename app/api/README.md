@@ -26,6 +26,7 @@ Webhook note:
 - `N8N_WEBHOOK_SECRET` signs outbound BE -> n8n requests.
 - `APP_WEBHOOK_SECRET` verifies inbound n8n -> BE callbacks.
 - Outbound job payloads include `app`, `action`, `job`, `project`, and action-specific data. For identify, the payload also includes both `identify.drafts` and `identify.merged`.
+- For easier n8n expression mapping, the outbound body also carries flat aliases such as `job_id`, `project_id`, `diagnosis_id`, `objective_id`, `identify_drafts`, `identify_merged`, `diagnosis_result`, `objective_input`, and `callback_url`.
 - `lib/n8n/contracts.ts` is the canonical place for outbound payload shape builders and callback payload helpers.
 - Callback routes expect `x-n8n-signature` and `x-n8n-timestamp` headers, and the raw body is validated before the JSON payload is processed.
 - Authenticated routes can read Supabase access tokens from `Authorization: Bearer <token>` or the internal `x-user-id` testing header.

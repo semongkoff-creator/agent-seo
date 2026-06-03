@@ -25,7 +25,14 @@ export async function triggerJob(payload: N8nTriggerPayload) {
     throw new AppError('INTEGRATION_ERROR', 'N8N webhook is not configured', 502);
   }
 
-  const body = JSON.stringify(payload);
+  const wirePayload = {
+    ...payload,
+    job_id: payload.jobId,
+    project_id: payload.projectId,
+    user_id: payload.userId,
+    callback_url: payload.callbackUrl
+  };
+  const body = JSON.stringify(wirePayload);
   const signature = signPayload(body, secret);
   const response = await fetch(url, {
     method: 'POST',

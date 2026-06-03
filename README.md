@@ -46,6 +46,7 @@ Kaitech seed:
 - The identify flow is wired to `N8N_IDENTIFY_WEBHOOK_URL`; in production this should point to your live n8n webhook endpoint in `.env.local`.
 - The outbound identify payload keeps both the merged form data and the original per-step drafts, so the n8n workflow can inspect raw inputs and final context together.
 - The objective flow uses `N8N_OBJECTIVE_WEBHOOK_URL` in production; it still falls back to `N8N_WEBHOOK_URL` if you choose to reuse one workflow.
+- The n8n trigger body now exposes both nested objects and flat aliases like `job_id`, `project_id`, `diagnosis_id`, `objective_id`, and `callback_url`, which makes n8n expressions easier to map.
 - The canonical outbound job payload builders live in `lib/n8n/contracts.ts`.
 - The same file also holds callback payload helpers for `diagnosis-complete`, `objective-complete`, and `job-failed`.
 - The identify flow signs outgoing requests with `N8N_WEBHOOK_SECRET`, and the n8n callback routes verify `APP_WEBHOOK_SECRET`.
