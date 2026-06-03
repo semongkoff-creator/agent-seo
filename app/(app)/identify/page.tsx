@@ -1,10 +1,15 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { ArrowRight, Sparkles, WandSparkles } from 'lucide-react';
 import { requireUser } from '@/lib/auth/session';
+import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { listProjects } from '@/lib/services/projects';
 
 export default async function IdentifyLandingPage() {
   const user = await requireUser();
+  const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
+  const copy = getAppCopy(locale);
+  const identifyCopy = copy.identify;
   const projects = await listProjects(user.id, { page: 1, limit: 8 });
 
   return (
@@ -15,11 +20,10 @@ export default async function IdentifyLandingPage() {
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
-                Start a diagnosis run
+                {identifyCopy.title}
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant md:text-base">
-                Pick a project and continue the Identify wizard. Drafts autosave on each step, then hand off to n8n
-                when you submit.
+                {identifyCopy.description}
               </p>
             </div>
             <Link
@@ -27,7 +31,7 @@ export default async function IdentifyLandingPage() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all hover:-translate-y-0.5"
             >
               <Sparkles className="h-4 w-4" />
-              View projects
+              {identifyCopy.viewProjects}
             </Link>
           </div>
         </div>
@@ -36,14 +40,14 @@ export default async function IdentifyLandingPage() {
           <article className="rounded-[28px] border border-outline-variant bg-primary/10 p-6 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <WandSparkles className="h-4 w-4" />
-              Flow overview
+              {locale === 'id' ? 'Ringkasan alur' : 'Flow overview'}
             </div>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-on-surface">
-              <li>1. Pick a project</li>
-              <li>2. Complete the 6-step wizard</li>
-              <li>3. Drafts autosave as you move</li>
-              <li>4. Submit to n8n for analysis</li>
-              <li>5. Review the live diagnosis page</li>
+              <li>{identifyCopy.flow1}</li>
+              <li>{identifyCopy.flow2}</li>
+              <li>{identifyCopy.flow3}</li>
+              <li>{identifyCopy.flow4}</li>
+              <li>{identifyCopy.flow5}</li>
             </ol>
           </article>
 
@@ -68,11 +72,11 @@ export default async function IdentifyLandingPage() {
                         href={`/projects/${id}/identify/step/1`}
                         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all hover:-translate-y-0.5"
                       >
-                        Open Wizard
+                        {locale === 'id' ? 'Buka Wizard' : 'Open Wizard'}
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                       <Link href={`/campaign/${id}`} className="text-sm font-semibold text-on-surface-variant hover:text-primary">
-                        View campaign
+                        {locale === 'id' ? 'Lihat campaign' : 'View campaign'}
                       </Link>
                     </div>
                   </article>
@@ -80,7 +84,9 @@ export default async function IdentifyLandingPage() {
               })
             ) : (
               <div className="rounded-[28px] border border-dashed border-outline-variant bg-white p-6 text-sm text-on-surface-variant">
-                No projects yet. Create one first, then return here to start the Identify flow.
+                {locale === 'id'
+                  ? 'Belum ada project. Buat dulu, lalu kembali ke sini untuk memulai alur Identify.'
+                  : 'No projects yet. Create one first, then return here to start the Identify flow.'}
               </div>
             )}
           </section>

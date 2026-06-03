@@ -200,7 +200,7 @@ export default async function ObjectivePage({ params }: { params: { id: string }
   const objectiveType = objectiveTypeLabel(objective.objective_type);
   const smartObjective = toText(
     objective.smart_objective,
-    'Pending objective generation. The final SMART objective will appear here once the workflow completes.'
+    'Pending objective generation. The final SMART objective will appear here once the result is stored in Supabase.'
   );
   const status = toText(objective.status, 'pending');
   const modelUsed = toText(objective.model_used, 'n8n');

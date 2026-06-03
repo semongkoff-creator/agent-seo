@@ -300,8 +300,7 @@ export async function submitIdentify(userId: string, projectId: string) {
         diagnosisId: diagnosis.id,
         drafts: structuredDrafts,
         merged: sanitizedMergedPayload
-      }),
-      callbackUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/n8n/diagnosis-complete`
+      })
     });
   } catch (error) {
     await db

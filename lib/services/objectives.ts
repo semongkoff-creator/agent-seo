@@ -264,8 +264,7 @@ export async function generateObjective(userId: string, projectId: string, input
           seo_baseline: input.seo_baseline,
           constraints: input.constraints
         }
-      }),
-      callbackUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/n8n/objective-complete`
+      })
     });
   } catch (error) {
     await db

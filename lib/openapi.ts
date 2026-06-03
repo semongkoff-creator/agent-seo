@@ -33,9 +33,6 @@ export function buildOpenApiSpec(): OpenApiSpec {
       '/api/diagnoses/{id}': { get: { summary: 'Get diagnosis' }, post: { summary: 'Rerun diagnosis' } },
       '/api/objectives': { get: { summary: 'List objectives' } },
       '/api/objectives/{id}': { get: { summary: 'Get objective' } },
-      '/api/webhooks/n8n/diagnosis-complete': { post: { summary: 'Diagnosis callback' } },
-      '/api/webhooks/n8n/objective-complete': { post: { summary: 'Objective callback' } },
-      '/api/webhooks/n8n/job-failed': { post: { summary: 'Job failure callback' } }
     }
   };
 }

@@ -602,7 +602,7 @@ export function IdentifyWizard({
                   <li>1. Draft autosaves to Supabase</li>
                   <li>2. Final submit creates diagnosis + job</li>
                   <li>3. n8n runs in the background</li>
-                  <li>4. Diagnosis updates in realtime</li>
+                  <li>4. Results are written to Supabase and the diagnosis page reads them</li>
                 </ol>
               </div>
 

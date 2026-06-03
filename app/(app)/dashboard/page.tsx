@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import {
   ArrowUpRight,
   BarChart3,
@@ -17,6 +18,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
+import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { getDashboardOverview, listDashboardInsights } from '@/lib/services/dashboard';
 import { listDiagnoses } from '@/lib/services/diagnoses';
 import { listProjects } from '@/lib/services/projects';
@@ -294,7 +296,7 @@ function mapDiagnoses(source: Awaited<ReturnType<typeof listDiagnoses>>['items']
       : 'Diagnosis';
     const summary = typeof record.diagnosis_summary === 'string' && record.diagnosis_summary
       ? record.diagnosis_summary
-      : 'Diagnosis summary will appear after n8n completes the workflow.';
+      : 'Diagnosis summary will appear after n8n stores the result in Supabase.';
     const severity =
       typeof record.severity === 'string' && ['low', 'medium', 'high', 'critical'].includes(record.severity)
         ? (record.severity as DiagnosisRowData['severity'])
@@ -340,6 +342,9 @@ function EmptyState({
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
+  const copy = getAppCopy(locale);
+  const dashboardCopy = copy.dashboard;
   const overview = await getDashboardOverview(user.id);
   const projectData = await listProjects(user.id, { page: 1, limit: 3 });
   const diagnosisData = await listDiagnoses(user.id, { page: 1, limit: 3 });
@@ -387,12 +392,12 @@ export default async function DashboardPage() {
       />
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <PageHeader
-          eyebrow="Dashboard"
-          title="Dashboard Overview"
-          description="Track active SEO projects, review the latest signals, and move from setup to n8n-powered execution in fewer steps."
+          eyebrow={dashboardCopy.eyebrow}
+          title={dashboardCopy.title}
+          description={dashboardCopy.description}
           actions={[
-            { label: 'Create Project', href: '/projects#new-project' as any },
-            { label: 'Open Projects', href: '/projects' as any }
+            { label: copy.shell.newProject, href: '/projects#new-project' as any },
+            { label: dashboardCopy.openProjects, href: '/projects' as any }
           ]}
         />
 
@@ -407,57 +412,72 @@ export default async function DashboardPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-primary-container px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
                     <Activity className="h-4 w-4" />
-                    Live workspace
+                    {dashboardCopy.liveWorkspace}
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                    <Clock3 className="h-4 w-4" />
-                    Jakarta time
-                    <span className="normal-case tracking-normal">
-                      {activityData.latest ? formatWibDateTime(activityData.latest) : 'Waiting for first event'}
+                    <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                      <Clock3 className="h-4 w-4" />
+                      {dashboardCopy.jakartaTime}
+                      <span className="normal-case tracking-normal">
+                      {activityData.latest
+                        ? formatWibDateTime(activityData.latest)
+                        : dashboardCopy.waitingForEvent}
+                      </span>
                     </span>
-                  </span>
                 </div>
 
                 <div className="max-w-3xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                    Orchestrated by n8n
+                    {dashboardCopy.orchestratedBy}
                   </p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight text-on-surface md:text-3xl">
-                    One view for the entire SEO engine.
+                    {dashboardCopy.heroTitle}
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant md:text-base">
-                    Website actions trigger the backend, n8n runs the workflow, and Supabase stores the result. This
-                    panel shows the live state of that loop without any placeholder data.
+                    {dashboardCopy.heroBody}
                   </p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                      Projects
+                      {copy.shell.projects}
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.projectCount}</p>
                     <p className="mt-1 text-sm text-on-surface-variant">
-                      {overview.activeProjectCount} active, {Math.max(0, overview.projectCount - overview.activeProjectCount)} archived
+                      {locale === 'id'
+                        ? `${overview.activeProjectCount} aktif, ${Math.max(
+                            0,
+                            overview.projectCount - overview.activeProjectCount
+                          )} diarsipkan`
+                        : `${overview.activeProjectCount} active, ${Math.max(
+                            0,
+                            overview.projectCount - overview.activeProjectCount
+                          )} archived`}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                      Diagnoses
+                      {copy.shell.diagnoses}
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.completedDiagnoses}</p>
-                    <p className="mt-1 text-sm text-on-surface-variant">Signals returned from n8n workflows</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      {locale === 'id'
+                        ? 'Sinyal tersimpan di Supabase setelah n8n selesai'
+                        : 'Signals stored in Supabase after n8n completes'}
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                      Objectives
+                      {copy.shell.objectives}
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.completedObjectives}</p>
-                    <p className="mt-1 text-sm text-on-surface-variant">SMART targets ready for execution</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      {locale === 'id' ? 'Target SMART siap dieksekusi' : 'SMART targets ready for execution'}
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                      Next action
+                      {locale === 'id' ? 'Aksi berikutnya' : 'Next action'}
                     </p>
                     <p className="mt-2 text-base font-semibold text-on-surface">{nextAction.title}</p>
                     <p className="mt-1 text-sm text-on-surface-variant">{nextAction.body}</p>
@@ -466,11 +486,11 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="border-t border-outline-variant bg-surface-container-low px-5 py-5 sm:px-6 sm:py-6 lg:border-l lg:border-t-0 lg:px-7 lg:py-8">
+          <div className="border-t border-outline-variant bg-surface-container-low px-5 py-5 sm:px-6 sm:py-6 lg:border-l lg:border-t-0 lg:px-7 lg:py-8">
               <div className="flex h-full flex-col justify-between gap-5">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                    Recommended action
+                    {locale === 'id' ? 'Aksi yang disarankan' : 'Recommended action'}
                   </p>
                   <h3 className="mt-2 text-xl font-semibold text-on-surface">{nextAction.title}</h3>
                   <p className="mt-3 text-sm leading-6 text-on-surface-variant">{nextAction.body}</p>
@@ -516,11 +536,13 @@ export default async function DashboardPage() {
         <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-sm">
           <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick Start</p>
-              <h2 className="mt-1 text-lg font-semibold text-on-surface">The shortest path from brief to workflow</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                {dashboardCopy.quickStart}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-on-surface">{dashboardCopy.quickStartTitle}</h2>
             </div>
             <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
-              Open projects
+              {dashboardCopy.openProjects}
             </Link>
           </div>
 
@@ -535,12 +557,12 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                Active Projects
+                {dashboardCopy.activeProjects}
               </p>
-              <h2 className="mt-1 text-lg font-semibold text-on-surface">Visibility, authority, and trend</h2>
+              <h2 className="mt-1 text-lg font-semibold text-on-surface">{dashboardCopy.activeProjectsTitle}</h2>
             </div>
             <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
-              View all
+              {locale === 'id' ? 'Lihat semua' : 'View all'}
             </Link>
           </div>
 
@@ -555,9 +577,9 @@ export default async function DashboardPage() {
           ) : (
             <div className="px-4 py-4 md:px-6">
               <EmptyState
-                title="No projects yet"
-                body="Create your first project to start the identify workflow. Once n8n returns data, the project cards will populate automatically."
-                actionLabel="Create project"
+                title={dashboardCopy.noProjectsTitle}
+                body={dashboardCopy.noProjectsBody}
+                actionLabel={copy.shell.newProject}
                 href="/projects#new-project"
               />
             </div>
@@ -570,12 +592,12 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                    Recent Diagnoses
+                    {dashboardCopy.recentDiagnoses}
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-on-surface">Latest diagnosis signals</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-on-surface">{dashboardCopy.recentDiagnosesTitle}</h2>
                 </div>
                 <Link href={'/diagnosis' as any} className="text-sm font-semibold text-primary hover:underline">
-                  Open latest
+                  {locale === 'id' ? 'Buka terbaru' : 'Open latest'}
                 </Link>
               </div>
 
@@ -593,9 +615,9 @@ export default async function DashboardPage() {
               ) : (
                 <div className="px-4 py-4 md:px-6">
                   <EmptyState
-                    title="No diagnoses yet"
-                    body="When identify runs through n8n and writes back to Supabase, the diagnosis cards will appear here."
-                    actionLabel="Start identify"
+                    title={dashboardCopy.noDiagnosesTitle}
+                    body={dashboardCopy.noDiagnosesBody}
+                    actionLabel={locale === 'id' ? 'Mulai identify' : 'Start identify'}
                     href="/identify"
                   />
                 </div>
@@ -608,21 +630,25 @@ export default async function DashboardPage() {
               insights.map((insight) => <InsightCard key={insight.title} insight={insight} />)
             ) : (
               <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Workspace pulse</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                  {dashboardCopy.workspacePulse}
+                </p>
                 <h3 className="mt-2 text-lg font-semibold text-on-surface">{activeProjectSummary}</h3>
                 <p className="mt-2 text-sm leading-6 text-on-surface-variant">{latestDiagnosisSummary}</p>
                 <div className="mt-4 rounded-2xl bg-primary-container p-4 text-on-primary-container">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-primary-container/80">
-                    n8n status
+                    {locale === 'id' ? 'Status n8n' : 'n8n status'}
                   </p>
                   <p className="mt-2 text-sm leading-6">
-                    Use the workflow engine to keep identify, diagnosis, and objective generation in sync.
+                    {locale === 'id'
+                      ? 'Gunakan workflow engine untuk menjaga identify, diagnosis, dan objective tetap sinkron.'
+                      : 'Use the workflow engine to keep identify, diagnosis, and objective generation in sync.'}
                   </p>
                   <Link
                     href="/projects"
                     className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-semibold"
                   >
-                    Open projects
+                    {dashboardCopy.openProjects}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </div>

@@ -10,15 +10,15 @@ import {
 
 export type NavItem = {
   href: string;
-  label: string;
+  labelKey: 'dashboard' | 'projects' | 'diagnoses' | 'campaigns' | 'objectives' | 'settings';
   icon: LucideIcon;
 };
 
 export const primaryNavItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects', label: 'Projects', icon: FolderKanban },
-  { href: '/diagnosis', label: 'Diagnoses', icon: Activity },
-  { href: '/campaign', label: 'Campaigns', icon: Megaphone },
-  { href: '/objective', label: 'Objectives', icon: Target },
-  { href: '/settings', label: 'Settings', icon: Settings }
+  { href: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/projects', labelKey: 'projects', icon: FolderKanban },
+  { href: '/diagnosis', labelKey: 'diagnoses', icon: Activity },
+  { href: '/campaign', labelKey: 'campaigns', icon: Megaphone },
+  { href: '/objective', labelKey: 'objectives', icon: Target },
+  { href: '/settings', labelKey: 'settings', icon: Settings }
 ];

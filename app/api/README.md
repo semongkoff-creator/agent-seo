@@ -19,17 +19,15 @@ Planned domains:
 - `api-keys`
 - `dashboard`
 - `tasks`
-- `webhooks/n8n`
 
 Webhook note:
 - `lib/n8n/client.ts` sends identify/objective jobs to the workflow URL envs. Use `N8N_IDENTIFY_WEBHOOK_URL` / `N8N_OBJECTIVE_WEBHOOK_URL` for production endpoints, or keep `N8N_WEBHOOK_URL` as the shared fallback.
-- See `docs/n8n-workflow.md` for the exact n8n node layout, response mode, callback format, and recommended expressions.
+- See `docs/n8n-workflow.md` for the exact n8n node layout, response mode, and recommended expressions.
 - `N8N_WEBHOOK_SECRET` signs outbound BE -> n8n requests.
-- `APP_WEBHOOK_SECRET` verifies inbound n8n -> BE callbacks.
 - Outbound job payloads include `app`, `action`, `job`, `project`, and action-specific data. For identify, the payload also includes both `identify.drafts` and `identify.merged`.
-- For easier n8n expression mapping, the outbound body also carries flat aliases such as `job_id`, `project_id`, `diagnosis_id`, `objective_id`, `identify_drafts`, `identify_merged`, `diagnosis_result`, `objective_input`, and `callback_url`.
-- `lib/n8n/contracts.ts` is the canonical place for outbound payload shape builders and callback payload helpers.
-- Callback routes expect `x-n8n-signature` and `x-n8n-timestamp` headers, and the raw body is validated before the JSON payload is processed.
+- For easier n8n expression mapping, the outbound body also carries flat aliases such as `job_id`, `project_id`, `diagnosis_id`, `objective_id`, `identify_drafts`, `identify_merged`, `diagnosis_result`, and `objective_input`.
+- `lib/n8n/contracts.ts` is the canonical place for outbound payload shape builders.
+- The current production flow writes results to Supabase directly from n8n.
 - Authenticated routes can read Supabase access tokens from `Authorization: Bearer <token>` or the internal `x-user-id` testing header.
 - Auth login/register/refresh/OAuth callback routes also set HttpOnly cookies so browser sessions work without manual token storage.
 - `POST /api/integrations/{provider}` stores an integration connection with optional API key and property payload, and `DELETE` disconnects it.

@@ -3,17 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Activity, FolderKanban, LayoutDashboard, Megaphone, Settings } from 'lucide-react';
+import { getAppCopy, type Locale } from '@/lib/i18n';
 
 const items = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects', label: 'Projects', icon: FolderKanban },
-  { href: '/diagnosis', label: 'Diagnoses', icon: Activity },
-  { href: '/campaign', label: 'Campaigns', icon: Megaphone },
-  { href: '/settings', label: 'Settings', icon: Settings }
+  { href: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/projects', labelKey: 'projects', icon: FolderKanban },
+  { href: '/diagnosis', labelKey: 'diagnoses', icon: Activity },
+  { href: '/campaign', labelKey: 'campaigns', icon: Megaphone },
+  { href: '/settings', labelKey: 'settings', icon: Settings }
 ] as const;
 
-export function BottomNav() {
+export function BottomNav({ locale }: { locale: Locale }) {
   const pathname = usePathname();
+  const copy = getAppCopy(locale).shell;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-surface lg:hidden">
@@ -32,7 +34,7 @@ export function BottomNav() {
               ].join(' ')}
             >
               <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
+              <span>{copy[item.labelKey]}</span>
             </Link>
           );
         })}

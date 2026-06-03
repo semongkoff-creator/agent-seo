@@ -39,7 +39,7 @@ export default async function ObjectivesPage() {
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <PageHeader
+          <PageHeader
           eyebrow="Objectives"
           title="Objective Library"
           description="Review the generated SMART objectives, return to the builder, or open the related campaign."
@@ -52,7 +52,7 @@ export default async function ObjectivesPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Execution anchor</p>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant">
                 Generated objectives bridge diagnosis and campaign execution. Open one to inspect the SMART wording,
-                baseline, and target definitions in full.
+                baseline, and target definitions in full. The final result is stored in Supabase and read back here.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -86,7 +86,7 @@ export default async function ObjectivesPage() {
               const objectiveType = toText(record.objective_type, 'mixed').replace(/_/g, ' ');
               const smartObjective = toText(
                 record.smart_objective,
-                'The SMART objective will appear here once the generation workflow completes.'
+                'The SMART objective will appear here once the result is stored in Supabase.'
               );
               const generatedAt = toText(record.completed_at ?? record.created_at, 'Recently');
               const generatedLabel = generatedAt ? formatWibDate(generatedAt) : 'Recently';
@@ -141,8 +141,9 @@ export default async function ObjectivesPage() {
           <div className="rounded-[28px] border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center shadow-sm">
             <Target className="mx-auto h-6 w-6 text-primary" />
             <h2 className="mt-3 text-xl font-semibold text-on-surface">No objectives yet</h2>
-            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Once a diagnosis completes, the Objective builder can turn it into a SMART plan through n8n.
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+              Once a diagnosis completes, the Objective builder can turn it into a SMART plan through n8n, then the
+              result is stored in Supabase.
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <Link

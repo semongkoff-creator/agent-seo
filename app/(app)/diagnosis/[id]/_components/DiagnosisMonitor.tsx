@@ -114,12 +114,13 @@ export function DiagnosisMonitor({ diagnosisId, projectName }: DiagnosisMonitorP
               {projectName}
             </h1>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant md:text-base">
-              The analysis is still processing in the background. We will refresh automatically when it is done.
+              The analysis is still processing in the background. We read the latest status from Supabase and refresh
+              as soon as the result is stored.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Monitoring diagnosis
+            Reading Supabase updates
           </div>
         </div>
 

@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { ArrowUpRight, FolderKanban, Target } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { CreateProjectModal } from './_components/CreateProjectModal';
 import { requireUser } from '@/lib/auth/session';
+import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { listProjects } from '@/lib/services/projects';
 import { formatWibDate } from '@/lib/time';
 
@@ -12,57 +14,63 @@ function formatProjectUrl(record: Record<string, unknown>) {
 
 export default async function ProjectsPage() {
   const user = await requireUser();
+  const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
+  const copy = getAppCopy(locale);
+  const projectCopy = copy.projects;
   const projectsData = await listProjects(user.id, { page: 1, limit: 12 });
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <PageHeader
-          eyebrow="Projects"
-          title="Active Projects"
-          description="Create a project, run identify, then define the objective. This page keeps the core workflow in one place."
-          actions={[{ label: 'Open Identify Hub', href: '/identify' }]}
+          eyebrow={projectCopy.eyebrow}
+          title={projectCopy.title}
+          description={projectCopy.description}
+          actions={[{ label: projectCopy.openIdentifyHub, href: '/identify' }]}
         />
 
         <div id="new-project" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2">
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-semibold text-on-surface">Create a new project</h2>
+              <h2 className="text-lg font-semibold text-on-surface">{projectCopy.createTitle}</h2>
             </div>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Open the modal, fill the brief, and jump straight into Identify without leaving this page.
+              {projectCopy.createBody}
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <CreateProjectModal />
               <Link href="/identify" className="text-sm font-semibold text-primary hover:underline">
-                Open Identify hub
+                {projectCopy.openIdentifyHub}
               </Link>
             </div>
             <div className="mt-5 rounded-2xl bg-surface-container-low p-4 text-sm leading-6 text-on-surface-variant">
-              n8n will orchestrate the workflow after the project is created, so this step only captures the brief and
-              hands it off cleanly.
+              {locale === 'id'
+                ? 'n8n akan mengorkestrasi workflow setelah project dibuat, jadi langkah ini hanya menangkap brief lalu menulis hasil akhir ke Supabase.'
+                : 'n8n will orchestrate the workflow after the project is created, so this step only captures the brief and lets the workflow write the final result to Supabase.'}
             </div>
           </div>
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">How it works</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+              {projectCopy.howItWorks}
+            </p>
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl bg-surface-container-low p-4">
-                <p className="text-sm font-semibold text-on-surface">1. Create the project</p>
+                <p className="text-sm font-semibold text-on-surface">{projectCopy.step1}</p>
                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                  Save the domain, target audience, and business goal so the workflow has the right starting point.
+                  {projectCopy.step1Body}
                 </p>
               </div>
               <div className="rounded-2xl bg-surface-container-low p-4">
-                <p className="text-sm font-semibold text-on-surface">2. Run identify</p>
+                <p className="text-sm font-semibold text-on-surface">{projectCopy.step2}</p>
                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                  The website sends the brief to n8n, which returns the first diagnosis and stores it in Supabase.
+                  {projectCopy.step2Body}
                 </p>
               </div>
               <div className="rounded-2xl bg-surface-container-low p-4">
-                <p className="text-sm font-semibold text-on-surface">3. Define the objective</p>
+                <p className="text-sm font-semibold text-on-surface">{projectCopy.step3}</p>
                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                  Turn the diagnosis into a SMART objective, then continue into campaign planning.
+                  {projectCopy.step3Body}
                 </p>
               </div>
             </div>
@@ -140,15 +148,14 @@ export default async function ProjectsPage() {
           ) : (
             <div className="md:col-span-2 rounded-[28px] border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center shadow-sm">
               <FolderKanban className="mx-auto h-6 w-6 text-primary" />
-              <h2 className="mt-3 text-xl font-semibold text-on-surface">No projects yet</h2>
+              <h2 className="mt-3 text-xl font-semibold text-on-surface">{projectCopy.emptyTitle}</h2>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Create the first project to start the n8n-powered identify flow. Once the project exists, the dashboard
-                and workflows will fill in automatically.
+                {projectCopy.emptyBody}
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <CreateProjectModal />
                 <Link href="/identify" className="text-sm font-semibold text-primary hover:underline">
-                  Open identify hub
+                  {projectCopy.openIdentifyHub}
                 </Link>
               </div>
             </div>

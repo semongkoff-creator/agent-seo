@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { primaryNavItems } from './nav-data';
+import { getAppCopy, type Locale } from '@/lib/i18n';
 
 function isActive(pathname: string, href: string) {
   if (href === '/dashboard') {
@@ -14,14 +15,15 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MobileSidebarSheet() {
+export function MobileSidebarSheet({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const copy = getAppCopy(locale).shell;
 
   const title = useMemo(() => {
     const active = primaryNavItems.find((item) => isActive(pathname, item.href));
-    return active?.label ?? 'SEO Agent';
-  }, [pathname]);
+    return active ? copy[active.labelKey] : copy.appName;
+  }, [copy, pathname]);
 
   return (
     <>
@@ -29,7 +31,7 @@ export function MobileSidebarSheet() {
         type="button"
         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface-variant lg:hidden"
         onClick={() => setOpen(true)}
-        aria-label="Open navigation"
+        aria-label={copy.openNavigation}
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -39,20 +41,20 @@ export function MobileSidebarSheet() {
           <button
             type="button"
             className="absolute inset-0 bg-on-surface/40"
-            aria-label="Close navigation"
+            aria-label={copy.closeNavigation}
             onClick={() => setOpen(false)}
           />
           <aside className="absolute left-0 top-0 flex h-full w-[85vw] max-w-sm flex-col border-r border-outline-variant bg-surface p-md shadow-2xl">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">SEO Agent</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">{copy.appName}</p>
                 <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
               </div>
               <button
                 type="button"
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-outline-variant text-on-surface-variant"
                 onClick={() => setOpen(false)}
-                aria-label="Close navigation"
+                aria-label={copy.closeNavigation}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -76,7 +78,7 @@ export function MobileSidebarSheet() {
                     ].join(' ')}
                   >
                     <Icon className="h-5 w-5" />
-                    <span className="text-body-md">{item.label}</span>
+                    <span className="text-body-md">{copy[item.labelKey]}</span>
                   </Link>
                 );
               })}

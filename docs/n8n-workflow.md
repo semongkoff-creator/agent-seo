@@ -3,29 +3,29 @@
 This guide matches the current SEO Agent app flow:
 
 - Website -> n8n
-- n8n -> Website callback
-- Website persists results to Supabase
+- n8n -> AI analysis
+- n8n -> Supabase
+- Website reads results from Supabase
 
 ## Shared conventions
 
 - Outbound trigger requests are signed by the app with `x-app-signature`.
-- Callback requests back to the app must include:
-  - `x-n8n-signature`
-  - `x-n8n-timestamp`
-- The callback signature is computed from `timestamp.body` with `APP_WEBHOOK_SECRET`.
+- Use the built-in Web Crypto API in Code nodes for HMAC verification.
 - The n8n trigger body includes both nested objects and flat aliases:
-  - `job_id`
-  - `project_id`
-  - `user_id`
-  - `callback_url`
-  - `diagnosis_id`
-  - `objective_id`
-  - `identify_drafts`
-  - `identify_merged`
-  - `diagnosis_result`
-  - `objective_input`
+- `job_id`
+- `project_id`
+- `user_id`
+- `diagnosis_id`
+- `objective_id`
+- `identify_drafts`
+- `identify_merged`
+- `diagnosis_result`
+- `objective_input`
 
 ## Workflow 1: Identify Problem
+
+This workflow must only do identification and diagnosis.
+It should not create the final SMART objective.
 
 ### 1) Webhook trigger
 
@@ -46,60 +46,81 @@ Expected incoming fields:
 - `job_id`
 - `project_id`
 - `diagnosis_id`
-- `callback_url`
 - `identify.drafts`
 - `identify.merged`
 
-### 3) Business logic nodes
+### 3) AI Agent node
 
-Use whatever processing nodes you want:
+Use the **AI Agent** node as the analysis core.
 
-- OpenAI
-- HTTP Request
-- Switch
-- IF
-- Merge
-- Set
+Recommended setup:
+
+- AI Agent root node
+- OpenAI Chat Model sub-node
+- at least one tool sub-node
+
+Suggested prompt behavior:
+
+- inspect `identify_drafts` and `identify_merged`
+- return a strict JSON object only
+- keep the output compatible with the backend diagnosis schema
+
+If you want deterministic helper logic, connect a small **Code Tool** as a supporting tool for the agent.
 
 The goal is to produce the final diagnosis result.
 
-### 4) Code node: Sign Callback
+### 4) Code node: Normalize AI Result
 
-Before sending the callback back to the app:
+Convert the AI Agent output into the final Supabase payload shape.
 
-- create a timestamp in seconds
-- compute HMAC with `APP_WEBHOOK_SECRET`
-- sign `timestamp.body`
+Recommended fields:
+
+- `job_id`
+- `project_id`
+- `diagnosis_id`
+- `diagnosis_result`
+- `supabase_diagnosis_payload`
+- `supabase_job_payload`
+- `supabase_usage_event_payload`
+
+### 5) HTTP Request node: Update Diagnosis in Supabase
+
+PATCH the diagnosis row directly in Supabase.
+
+Recommended endpoint:
+
+- `{{$env.SUPABASE_URL}}/rest/v1/seo_diagnoses?id=eq.{{$json.diagnosis_id}}`
 
 Send headers:
 
-- `x-n8n-signature`
-- `x-n8n-timestamp`
+- `apikey`
+- `Authorization`
+- `Content-Type`
+- `Prefer`
 
-### 5) HTTP Request node: Callback to app
+Body should be the prepared `supabase_diagnosis_payload`.
 
-POST to:
+### 6) HTTP Request node: Update Job in Supabase
 
-- `{{$json.callback_url}}`
+PATCH the job row directly in Supabase.
 
-Use this payload shape:
+Recommended endpoint:
 
-```json
-{
-  "job_id": "{{$json.job_id}}",
-  "project_id": "{{$json.project_id}}",
-  "diagnosis_id": "{{$json.diagnosis_id}}",
-  "status": "completed",
-  "result": {
-    "primary_problem_type": "qualified_traffic",
-    "severity": "high"
-  }
-}
-```
+- `{{$env.SUPABASE_URL}}/rest/v1/jobs?id=eq.{{$json.job_id}}`
 
-The real `result` object should contain the diagnosis output you generate in n8n.
+Body should be the prepared `supabase_job_payload`.
 
-### 6) Respond OK node
+### 7) HTTP Request node: Insert Usage Event
+
+POST a usage event row to Supabase.
+
+Recommended endpoint:
+
+- `{{$env.SUPABASE_URL}}/rest/v1/usage_events`
+
+Body should be the prepared `supabase_usage_event_payload`.
+
+### 8) Respond OK node
 
 Return a small success response to the original caller.
 
@@ -108,12 +129,15 @@ Recommended body:
 ```json
 {
   "ok": true,
-  "received": true,
+  "stored": true,
   "job_id": "={{ $json.job_id || $json.payload?.job?.id }}"
 }
 ```
 
 ## Workflow 2: Define Objective
+
+This workflow must only do objective planning.
+It should not re-identify the problem or overwrite the diagnosis logic.
 
 ### 1) Webhook trigger
 
@@ -125,48 +149,74 @@ Recommended body:
 
 Verify `x-app-signature` with `N8N_WEBHOOK_SECRET`.
 
-### 3) Business logic nodes
+### 3) AI Agent node
 
-Build the SMART objective from:
+Use the **AI Agent** node as the planning core.
 
-- `diagnosis_result`
-- `objective_input`
+Recommended setup:
+
+- AI Agent root node
+- OpenAI Chat Model sub-node
+- at least one tool sub-node
+
+Suggested prompt behavior:
+
+- inspect `diagnosis_result` and `objective_input`
+- return a strict JSON object only
+- keep the output compatible with the backend objective schema
+
+### 4) Code node: Normalize AI Result
+
+Convert the AI Agent output into the final Supabase payload shape.
+
+Recommended fields:
+
+- `job_id`
 - `project_id`
-- `diagnosis_id`
+- `objective_id`
+- `objective_result`
+- `supabase_objective_payload`
+- `supabase_job_payload`
+- `supabase_usage_event_payload`
 
-### 4) Code node: Sign Callback
+### 5) HTTP Request node: Update Objective in Supabase
 
-Sign the callback body with `APP_WEBHOOK_SECRET`.
+PATCH the objective row directly in Supabase.
 
-### 5) HTTP Request node: Callback to app
+Recommended endpoint:
 
-POST to:
+- `{{$env.SUPABASE_URL}}/rest/v1/seo_objectives?id=eq.{{$json.objective_id}}`
 
-- `{{$json.callback_url}}`
+Body should be the prepared `supabase_objective_payload`.
 
-Use this callback shape:
+### 6) HTTP Request node: Update Job in Supabase
 
-```json
-{
-  "job_id": "{{$json.job_id}}",
-  "project_id": "{{$json.project_id}}",
-  "objective_id": "{{$json.objective_id}}",
-  "status": "completed",
-  "result": {
-    "objective_type": "mixed",
-    "smart_objective": "Generate the final SMART objective here"
-  }
-}
-```
+PATCH the job row directly in Supabase.
 
-### 6) Respond OK node
+Recommended endpoint:
+
+- `{{$env.SUPABASE_URL}}/rest/v1/jobs?id=eq.{{$json.job_id}}`
+
+Body should be the prepared `supabase_job_payload`.
+
+### 7) HTTP Request node: Insert Usage Event
+
+POST a usage event row to Supabase.
+
+Recommended endpoint:
+
+- `{{$env.SUPABASE_URL}}/rest/v1/usage_events`
+
+Body should be the prepared `supabase_usage_event_payload`.
+
+### 8) Respond OK node
 
 Return:
 
 ```json
 {
   "ok": true,
-  "received": true,
+  "stored": true,
   "job_id": "={{ $json.job_id || $json.payload?.job?.id }}"
 }
 ```
@@ -174,7 +224,6 @@ Return:
 ## Why this layout works
 
 - The app triggers n8n and does not block on the final AI result.
-- n8n can handle the entire AI orchestration.
-- The callback writes the final result back to the app.
-- Supabase remains the system of record.
-
+- n8n handles the AI orchestration.
+- n8n writes the final result directly to Supabase.
+- Supabase is the system of record.

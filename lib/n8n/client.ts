@@ -7,7 +7,6 @@ export type N8nTriggerPayload = {
   userId: string;
   action: 'identify_problem' | 'define_objective';
   payload: Record<string, unknown>;
-  callbackUrl: string;
 };
 
 function signPayload(body: string, secret: string) {
@@ -29,8 +28,7 @@ export async function triggerJob(payload: N8nTriggerPayload) {
     ...payload,
     job_id: payload.jobId,
     project_id: payload.projectId,
-    user_id: payload.userId,
-    callback_url: payload.callbackUrl
+    user_id: payload.userId
   };
   const body = JSON.stringify(wirePayload);
   const signature = signPayload(body, secret);
