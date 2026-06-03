@@ -15,11 +15,11 @@ export default async function IdentifyLandingPage() {
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
-                Choose a project to diagnose
+                Start a diagnosis flow
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant md:text-base">
-                The identify wizard lives on a project route now, so the draft can autosave cleanly and resume from
-                any step.
+                Pick a project and continue the identify wizard. The draft autosaves on each step, then hands off to
+                n8n when you submit.
               </p>
             </div>
             <Link
@@ -55,10 +55,11 @@ export default async function IdentifyLandingPage() {
                 const name = typeof record.name === 'string' && record.name ? record.name : 'Untitled Project';
                 const url = typeof record.website_url === 'string' && record.website_url ? record.website_url : 'https://example.com';
                 const stage = typeof record.website_stage === 'string' ? record.website_stage : 'existing';
+                const stageLabel = stage.replace(/_/g, ' ');
 
                 return (
                   <article key={id} className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">{stage.replace(/_/g, ' ')}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">{stageLabel}</p>
                     <h2 className="mt-2 text-xl font-semibold text-on-surface">{name}</h2>
                     <p className="mt-1 text-sm text-on-surface-variant">{url}</p>
                     <div className="mt-5 flex items-center justify-between gap-3">

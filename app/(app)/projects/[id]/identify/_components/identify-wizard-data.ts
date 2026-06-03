@@ -22,8 +22,8 @@ export type IdentifyStepConfig = {
 export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig> = {
   1: {
     step: 1,
-    eyebrow: 'Website Basics',
-    title: 'Tell us what the site is about',
+    eyebrow: 'Project Context',
+    title: 'Tell us what the site sells',
     description: 'We use these basics to anchor crawl, keyword, and conversion analysis.',
     fields: [
       { name: 'website_url', label: 'Website URL', type: 'text', placeholder: 'example.com' },
@@ -51,8 +51,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   },
   2: {
     step: 2,
-    eyebrow: 'Website Status',
-    title: 'Describe where the site is in its lifecycle',
+    eyebrow: 'Website Snapshot',
+    title: 'Describe the live SEO footprint',
     description: 'This helps us decide whether we should analyze from scratch or from live signals.',
     fields: [
       {
@@ -100,8 +100,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   },
   3: {
     step: 3,
-    eyebrow: 'Technical SEO',
-    title: 'Capture crawl and rendering signals',
+    eyebrow: 'Technical Signals',
+    title: 'Capture crawl and rendering health',
     description: 'We want the diagnosis to know what search engines can and cannot access.',
     fields: [
       { name: 'sitemap_url', label: 'Sitemap URL', type: 'text', placeholder: 'https://example.com/sitemap.xml' },
@@ -122,8 +122,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   },
   4: {
     step: 4,
-    eyebrow: 'Keywords & Relevance',
-    title: 'Map rankings to intent and opportunity',
+    eyebrow: 'Demand & Relevance',
+    title: 'Map keywords to intent and opportunity',
     description: 'This helps us detect a relevance gap versus authority or technical issues.',
     fields: [
       { name: 'current_ranking_keywords', label: 'Current Ranking Keywords', type: 'tags', placeholder: 'keyword one, keyword two' },
@@ -135,8 +135,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   },
   5: {
     step: 5,
-    eyebrow: 'Authority & Trust',
-    title: 'Tell us about the site authority gap',
+    eyebrow: 'Authority Profile',
+    title: 'Tell us about the brand and backlink gap',
     description: 'Authority signals help the agent understand why content may still be underperforming.',
     fields: [
       { name: 'domain_rating', label: 'Domain Rating', type: 'number', placeholder: '0' },
@@ -160,7 +160,7 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   },
   6: {
     step: 6,
-    eyebrow: 'Conversion',
+    eyebrow: 'Conversion Signals',
     title: 'Finish with conversion context',
     description: 'Even if traffic exists, the diagnosis should know whether the site converts well.',
     fields: [
@@ -354,4 +354,3 @@ export function serializeStepState(step: IdentifyStepNumber, state: Record<strin
 
   return payload;
 }
-

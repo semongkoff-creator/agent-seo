@@ -314,23 +314,35 @@ export function IdentifyWizard({
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-24 lg:pb-0">
         <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-6 shadow-sm md:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Identify Problem</p>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
-                {projectName}
+                Diagnose {projectName}
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant md:text-base">
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant md:text-base">
                 Step {currentIndex} of {totalSteps} - {config.title}
+              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant md:text-base">
+                We collect the site context first, then send the finished payload to n8n so diagnosis can run with
+                enough signal to be useful.
               </p>
             </div>
 
-            <Link
-              href="/dashboard"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant bg-white px-4 py-3 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-low"
-            >
-              <Save className="h-4 w-4" />
-              Save & Exit
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+              <div className="rounded-2xl border border-outline-variant bg-white px-4 py-3 text-left text-sm shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Progress</p>
+                <p className="mt-1 text-lg font-semibold text-on-surface">
+                  {currentIndex} / {totalSteps}
+                </p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant bg-white px-4 py-3 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-low"
+              >
+                <Save className="h-4 w-4" />
+                Save & Exit
+              </Link>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant">
@@ -403,7 +415,7 @@ export function IdentifyWizard({
 
           <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
+              <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">{config.eyebrow}</p>
                 <h2 className="mt-2 text-xl font-semibold tracking-tight text-on-surface md:text-2xl">{config.title}</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-on-surface-variant md:text-base">
@@ -579,26 +591,36 @@ export function IdentifyWizard({
             </div>
             <div className="mt-4 space-y-4 text-sm leading-6 text-on-surface-variant">
               <p>
-                The identify wizard gathers the site context the agent needs before it runs diagnosis through n8n.
+                Identify is the intake layer for diagnosis. The more complete the context, the better the problem
+                classification and the handoff to n8n.
               </p>
-              <div className="rounded-2xl border border-outline-variant bg-white p-4">
+
+              <div className="rounded-2xl border border-outline-variant bg-white p-4 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                  Background flow
+                  Flow snapshot
                 </p>
                 <ol className="mt-3 space-y-2">
                   <li>1. Draft autosaves to Supabase</li>
                   <li>2. Final submit creates diagnosis + job</li>
-                  <li>3. n8n runs in background</li>
-                  <li>4. Realtime updates diagnosis page</li>
+                  <li>3. n8n runs in the background</li>
+                  <li>4. Diagnosis updates in realtime</li>
                 </ol>
               </div>
-              <div className="rounded-2xl border border-outline-variant bg-primary/10 p-4 text-on-surface">
+
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-on-surface">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <TerminalSquare className="h-4 w-4" />
                   Current project
                 </div>
-                <p className="mt-2 text-sm">{projectName}</p>
+                <p className="mt-2 text-sm font-medium text-on-surface">{projectName}</p>
                 <p className="mt-1 text-xs text-on-surface-variant">{projectUrl}</p>
+              </div>
+
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Draft state</p>
+                <p className="mt-2 text-sm text-on-surface-variant">
+                  Auto-save runs every second, so you can move between steps without losing progress.
+                </p>
               </div>
             </div>
 
