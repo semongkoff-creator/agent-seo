@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Ban, Brain, CircleAlert, Sparkles } from 'lucide-react';
 import { ConfidenceGauge } from '@/components/ui/confidence-gauge';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { getAppCopy, type Locale } from '@/lib/i18n';
 import { formatWibDateTime } from '@/lib/time';
 
 type DiagnosisResultViewProps = {
@@ -9,15 +10,26 @@ type DiagnosisResultViewProps = {
   diagnosis: Record<string, unknown>;
   projectName: string;
   projectId: string;
+  locale: Locale;
 };
 
-const problemTypeLabels: Record<string, string> = {
-  technical_bottleneck: 'Technical Bottleneck',
-  relevance_gap: 'Relevance & Traffic Gap',
-  authority_deficit: 'Authority Deficit',
-  conversion_pitfall: 'Conversion Pitfall',
-  from_scratch: 'From Scratch',
-  mixed: 'Mixed Issues'
+const problemTypeLabels: Record<Locale, Record<string, string>> = {
+  en: {
+    technical_bottleneck: 'Technical Bottleneck',
+    relevance_gap: 'Relevance & Traffic Gap',
+    authority_deficit: 'Authority Deficit',
+    conversion_pitfall: 'Conversion Pitfall',
+    from_scratch: 'From Scratch',
+    mixed: 'Mixed Issues'
+  },
+  id: {
+    technical_bottleneck: 'Bottleneck Teknis',
+    relevance_gap: 'Kesenjangan Relevansi & Traffic',
+    authority_deficit: 'Defisit Authority',
+    conversion_pitfall: 'Hambatan Konversi',
+    from_scratch: 'Dari Nol',
+    mixed: 'Masalah Campuran'
+  }
 };
 
 function toText(value: unknown, fallback: string) {
@@ -37,12 +49,12 @@ function toArray(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
-function formatLabel(value: unknown) {
+function formatLabel(value: unknown, locale: Locale) {
   if (typeof value !== 'string' || !value) {
     return 'mixed';
   }
 
-  return problemTypeLabels[value] ?? value.replace(/_/g, ' ');
+  return problemTypeLabels[locale][value] ?? value.replace(/_/g, ' ');
 }
 
 function ToneCard({
@@ -67,8 +79,9 @@ function ToneCard({
   );
 }
 
-export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, projectId }: DiagnosisResultViewProps) {
-  const problemType = formatLabel(diagnosis.primary_problem_type);
+export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, projectId, locale }: DiagnosisResultViewProps) {
+  const copy = getAppCopy(locale).diagnosis;
+  const problemType = formatLabel(diagnosis.primary_problem_type, locale);
   const severity = toText(diagnosis.severity, 'medium') as 'low' | 'medium' | 'high' | 'critical';
   const confidence = toNumber(diagnosis.confidence_score, 87);
   const summary = toText(
@@ -110,14 +123,22 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                 <span className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-semibold text-on-primary-fixed-variant">
                   {problemType}
                 </span>
-                <SeverityBadge severity={severity} label={`Severity: ${severity}`} />
+                <SeverityBadge severity={severity} label={locale === 'id' ? `Tingkat: ${severity}` : `Severity: ${severity}`} />
                 <span className="rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
-                  {campaignReadiness === 'ready' ? 'Campaign ready' : 'Campaign not ready'}
+                  {campaignReadiness === 'ready'
+                    ? locale === 'id'
+                      ? 'Campaign siap'
+                      : 'Campaign ready'
+                    : locale === 'id'
+                      ? 'Campaign belum siap'
+                      : 'Campaign not ready'}
                 </span>
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Diagnosis result</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
+                  {locale === 'id' ? 'Hasil diagnosis' : 'Diagnosis result'}
+                </p>
                 <h1 className="mt-3 text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
                   {projectName}
                 </h1>
@@ -128,8 +149,12 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
             <div className="flex flex-col items-start gap-3 rounded-[24px] border border-outline-variant bg-white p-4 md:items-center">
               <ConfidenceGauge value={confidence} />
               <div className="text-left md:text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Confidence</p>
-                <p className="mt-1 text-sm text-on-surface-variant">Strong confidence from the current signals</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  {locale === 'id' ? 'Keyakinan' : 'Confidence'}
+                </p>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  {locale === 'id' ? 'Keyakinan kuat dari sinyal saat ini' : 'Strong confidence from the current signals'}
+                </p>
               </div>
             </div>
           </div>
@@ -140,7 +165,7 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
             <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
               <div className="mb-5 flex items-center gap-2">
                 <Brain className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-on-surface">Evidence Found</h2>
+                <h2 className="text-xl font-semibold text-on-surface">{locale === 'id' ? 'Bukti yang ditemukan' : 'Evidence Found'}</h2>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -168,7 +193,9 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
             </div>
 
             <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-on-surface">Root Cause Analysis</h2>
+              <h2 className="text-xl font-semibold text-on-surface">
+                {locale === 'id' ? 'Analisis Akar Masalah' : 'Root Cause Analysis'}
+              </h2>
               <div className="mt-5 space-y-4">
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center">
@@ -176,7 +203,9 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                     <div className="mt-1 h-full w-px bg-outline-variant" />
                   </div>
                   <div className="pb-4">
-                    <p className="font-semibold text-on-surface">Primary root cause</p>
+                    <p className="font-semibold text-on-surface">
+                      {locale === 'id' ? 'Akar masalah utama' : 'Primary root cause'}
+                    </p>
                     <p className="mt-1 text-sm leading-6 text-on-surface-variant">{rootCause}</p>
                   </div>
                 </div>
@@ -187,7 +216,9 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
               <div className="flex items-start gap-4">
                 <CircleAlert className="mt-1 h-8 w-8 text-error" />
                 <div className="min-w-0">
-                  <h2 className="text-xl font-semibold text-on-error-container">Business Impact</h2>
+                  <h2 className="text-xl font-semibold text-on-error-container">
+                    {locale === 'id' ? 'Dampak Bisnis' : 'Business Impact'}
+                  </h2>
                   <p className="mt-3 text-sm leading-6 text-on-error-container">{businessSummary}</p>
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {businessMetrics.length > 0 ? (
@@ -198,9 +229,9 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                         const direction = toText(metricRecord.direction, 'neutral');
                         return (
                           <div key={label} className="rounded-[20px] border border-white/60 bg-white/70 p-4">
-                            <p className="text-3xl font-semibold text-error">{value}</p>
-                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-on-error-container">
-                              {label}
+                          <p className="text-3xl font-semibold text-error">{value}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-on-error-container">
+                            {label}
                             </p>
                             <p className="mt-2 text-xs text-on-error-container/80">{direction}</p>
                           </div>
@@ -211,13 +242,13 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                         <div className="rounded-[20px] border border-white/60 bg-white/70 p-4">
                           <p className="text-3xl font-semibold text-error">-$12.4k</p>
                           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-on-error-container">
-                            Est. Monthly Revenue Loss
+                            {locale === 'id' ? 'Estimasi Kerugian Pendapatan Bulanan' : 'Est. Monthly Revenue Loss'}
                           </p>
                         </div>
                         <div className="rounded-[20px] border border-white/60 bg-white/70 p-4">
                           <p className="text-3xl font-semibold text-error">-18%</p>
                           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.22em] text-on-error-container">
-                            Checkout Conversion Rate
+                            {locale === 'id' ? 'Tingkat Konversi Checkout' : 'Checkout Conversion Rate'}
                           </p>
                         </div>
                       </>
@@ -231,7 +262,7 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
           <aside className="space-y-6">
             <div className="rounded-[28px] border border-primary bg-primary p-6 text-on-primary shadow-lg shadow-primary/20">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-primary/80">
-                Recommended Next Step
+                {locale === 'id' ? 'Langkah Selanjutnya yang Disarankan' : 'Recommended Next Step'}
               </p>
               <h2 className="mt-3 text-2xl font-semibold">{recommendedNextStep}</h2>
               <p className="mt-3 text-sm leading-6 text-on-primary/90">{objectiveDirection}</p>
@@ -239,14 +270,14 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                 href={`/projects/${projectId}/objective`}
                 className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-primary transition-transform hover:translate-y-[-1px]"
               >
-                Proceed to Define Objective
+                {locale === 'id' ? 'Lanjut ke Define Objective' : 'Proceed to Define Objective'}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
 
             <div className="rounded-[28px] border border-outline-variant bg-surface-container-highest p-6">
               <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                Avoid These Actions
+                {locale === 'id' ? 'Hindari Tindakan Ini' : 'Avoid These Actions'}
               </h3>
               <ul className="mt-4 space-y-3">
                 {(warnings.length > 0 ? warnings : ['Domain migration or TLD changes.']).map((item) => (
@@ -263,18 +294,22 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
                 <div className="flex h-full flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                      Status
+                      {locale === 'id' ? 'Status' : 'Status'}
                     </span>
                     <Sparkles className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">Campaign readiness</p>
+                    <p className="text-sm font-semibold text-on-surface">
+                      {locale === 'id' ? 'Kesiapan campaign' : 'Campaign readiness'}
+                    </p>
                     <p className="mt-1 text-sm text-on-surface-variant">{campaignReadiness}</p>
                   </div>
                 </div>
               </div>
               <p className="mt-3 text-sm text-on-surface-variant">
-                Strategy health is below the benchmark for comparable SaaS platforms.
+                {locale === 'id'
+                  ? 'Kesehatan strategi masih di bawah benchmark platform SaaS yang sejenis.'
+                  : 'Strategy health is below the benchmark for comparable SaaS platforms.'}
               </p>
             </div>
           </aside>
@@ -284,19 +319,21 @@ export function DiagnosisResultView({ diagnosisId, diagnosis, projectName, proje
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               <span>
-                Project: <span className="font-semibold text-on-surface">{projectName}</span>
+                {locale === 'id' ? 'Project: ' : 'Project: '}
+                <span className="font-semibold text-on-surface">{projectName}</span>
               </span>
               <span>
-                Analyzed: <span className="font-semibold text-on-surface">{metaDate}</span>
+                {locale === 'id' ? 'Dianalisis: ' : 'Analyzed: '}
+                <span className="font-semibold text-on-surface">{metaDate}</span>
               </span>
               <span>
-                Model:{' '}
+                {locale === 'id' ? 'Model: ' : 'Model: '}
                 <span className="rounded bg-surface-container px-2 py-1 font-semibold text-on-surface">{modelUsed}</span>
               </span>
             </div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
               <Sparkles className="h-4 w-4 text-primary" />
-              System Status: Optimal
+              {locale === 'id' ? 'Status Sistem: Optimal' : 'System Status: Optimal'}
             </div>
           </div>
         </footer>

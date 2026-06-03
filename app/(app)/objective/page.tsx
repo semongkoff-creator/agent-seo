@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { ArrowUpRight, CheckCircle2, Target, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { listObjectives } from '@/lib/services/objectives';
 import { listProjects } from '@/lib/services/projects';
+import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { formatWibDate } from '@/lib/time';
 
 function toText(value: unknown, fallback: string) {
@@ -13,6 +15,9 @@ function toText(value: unknown, fallback: string) {
 
 export default async function ObjectivesPage() {
   const user = await requireUser();
+  const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
+  const copy = getAppCopy(locale);
+  const objectiveCopy = copy.objective;
   const [objectivesData, projectsData] = await Promise.all([
     listObjectives(user.id, { page: 1, limit: 12 }),
     listProjects(user.id, { page: 1, limit: 50 })
@@ -39,40 +44,58 @@ export default async function ObjectivesPage() {
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-          <PageHeader
-          eyebrow="Objectives"
-          title="Objective Library"
-          description="Review the generated SMART objectives, return to the builder, or open the related campaign."
-          actions={[{ label: 'Define objective', href: '/projects' }]}
+        <PageHeader
+          eyebrow={objectiveCopy.libraryTitle}
+          title={objectiveCopy.libraryTitle}
+          description={objectiveCopy.description}
+          actions={[{ label: objectiveCopy.createProject, href: '/projects' }]}
         />
 
         <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Execution anchor</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                {locale === 'id' ? 'Titik eksekusi' : 'Execution anchor'}
+              </p>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant">
-                Generated objectives bridge diagnosis and campaign execution. Open one to inspect the SMART wording,
-                baseline, and target definitions in full. The final result is stored in Supabase and read back here.
+                {locale === 'id'
+                  ? 'Objective yang dihasilkan menjembatani diagnosis dan eksekusi campaign. Buka salah satu untuk memeriksa wording SMART, baseline, dan definisi target secara lengkap. Hasil final disimpan di Supabase dan dibaca kembali di sini.'
+                  : 'Generated objectives bridge diagnosis and campaign execution. Open one to inspect the SMART wording, baseline, and target definitions in full. The final result is stored in Supabase and read back here.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-semibold text-on-primary-fixed-variant">
-                {totalObjectives} total
+                {locale === 'id' ? `${totalObjectives} total` : `${totalObjectives} total`}
               </span>
               <span className="rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
-                {completedObjectives} ready
+                {locale === 'id' ? `${completedObjectives} siap` : `${completedObjectives} ready`}
               </span>
               <span className="rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
-                {inProgressObjectives} in progress
+                {locale === 'id' ? `${inProgressObjectives} diproses` : `${inProgressObjectives} in progress`}
               </span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatCard label="Total Objectives" value={String(totalObjectives)} delta="Generated records" icon={Target} />
-          <StatCard label="Completed" value={String(completedObjectives)} delta="Ready to use" icon={CheckCircle2} />
-          <StatCard label="In Progress" value={String(inProgressObjectives)} delta="Needs attention" icon={TrendingUp} />
+          <StatCard
+            label={locale === 'id' ? 'Total Objective' : 'Total Objectives'}
+            value={String(totalObjectives)}
+            delta={locale === 'id' ? 'Record yang dihasilkan' : 'Generated records'}
+            icon={Target}
+          />
+          <StatCard
+            label={locale === 'id' ? 'Selesai' : 'Completed'}
+            value={String(completedObjectives)}
+            delta={locale === 'id' ? 'Siap dipakai' : 'Ready to use'}
+            icon={CheckCircle2}
+          />
+          <StatCard
+            label={locale === 'id' ? 'Dalam proses' : 'In Progress'}
+            value={String(inProgressObjectives)}
+            delta={locale === 'id' ? 'Perlu perhatian' : 'Needs attention'}
+            icon={TrendingUp}
+          />
         </div>
 
         {objectivesData.items.length > 0 ? (
@@ -140,23 +163,24 @@ export default async function ObjectivesPage() {
         ) : (
           <div className="rounded-[28px] border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center shadow-sm">
             <Target className="mx-auto h-6 w-6 text-primary" />
-            <h2 className="mt-3 text-xl font-semibold text-on-surface">No objectives yet</h2>
+              <h2 className="mt-3 text-xl font-semibold text-on-surface">
+                {objectiveCopy.emptyTitle}
+              </h2>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Once a diagnosis completes, the Objective builder can turn it into a SMART plan through n8n, then the
-              result is stored in Supabase.
-            </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                {objectiveCopy.emptyBody}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/projects#new-project"
                 className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary"
               >
-                Create project
+                {objectiveCopy.createProject}
               </Link>
               <Link
                 href="/diagnosis"
                 className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm font-semibold text-on-surface"
               >
-                Open diagnoses
+                {objectiveCopy.openDiagnoses}
               </Link>
             </div>
           </div>
