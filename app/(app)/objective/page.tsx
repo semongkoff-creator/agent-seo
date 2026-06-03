@@ -42,17 +42,17 @@ export default async function ObjectivesPage() {
         <PageHeader
           eyebrow="Objectives"
           title="Objective Library"
-          description="Review the generated SMART objectives, jump back into the builder, or open the related campaign."
-          actions={[{ label: 'Define Objective', href: '/projects' }]}
+          description="Review the generated SMART objectives, return to the builder, or open the related campaign."
+          actions={[{ label: 'Define objective', href: '/projects' }]}
         />
 
         <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Execution Anchor</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Execution anchor</p>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant">
-                Generated objectives are your bridge between diagnosis and campaign execution. Open one to inspect the
-                SMART wording, baseline, and target definitions in full.
+                Generated objectives bridge diagnosis and campaign execution. Open one to inspect the SMART wording,
+                baseline, and target definitions in full.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

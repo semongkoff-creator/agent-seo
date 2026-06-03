@@ -15,11 +15,11 @@ export default async function IdentifyLandingPage() {
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
-                Start a diagnosis flow
+                Start a diagnosis run
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-on-surface-variant md:text-base">
-                Pick a project and continue the identify wizard. The draft autosaves on each step, then hands off to
-                n8n when you submit.
+                Pick a project and continue the Identify wizard. Drafts autosave on each step, then hand off to n8n
+                when you submit.
               </p>
             </div>
             <Link
@@ -27,7 +27,7 @@ export default async function IdentifyLandingPage() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all hover:-translate-y-0.5"
             >
               <Sparkles className="h-4 w-4" />
-              View Projects
+              View projects
             </Link>
           </div>
         </div>
@@ -40,9 +40,9 @@ export default async function IdentifyLandingPage() {
             </div>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-on-surface">
               <li>1. Pick a project</li>
-              <li>2. Fill the 6-step wizard</li>
-              <li>3. Draft autosaves every second</li>
-              <li>4. Submit to n8n for diagnosis</li>
+              <li>2. Complete the 6-step wizard</li>
+              <li>3. Drafts autosave as you move</li>
+              <li>4. Submit to n8n for analysis</li>
               <li>5. Review the live diagnosis page</li>
             </ol>
           </article>
@@ -80,7 +80,7 @@ export default async function IdentifyLandingPage() {
               })
             ) : (
               <div className="rounded-[28px] border border-dashed border-outline-variant bg-white p-6 text-sm text-on-surface-variant">
-                No projects yet. Create one first, then return here to start the identify flow.
+                No projects yet. Create one first, then return here to start the Identify flow.
               </div>
             )}
           </section>

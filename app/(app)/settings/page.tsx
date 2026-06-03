@@ -108,10 +108,10 @@ export default async function SettingsPage() {
           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
-                Manage Settings
+                Workspace settings
               </h1>
               <p className="hidden max-w-3xl text-sm leading-6 text-on-surface-variant sm:block md:text-base">
-                Manage your account configurations, team preferences, and API integrations.
+                Manage your account details, integration credentials, and automation access from one place.
               </p>
             </div>
             <Link
@@ -140,7 +140,7 @@ export default async function SettingsPage() {
             <div className="mt-6 space-y-4 text-sm text-on-surface-variant">
               <p>
                 Update your personal information and how others see you on the platform. The profile area stays simple
-                here so it is easy to scan on mobile.
+                so it is easy to scan on mobile.
               </p>
               <div className="rounded-2xl bg-surface-container-low p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-on-surface">
@@ -216,13 +216,13 @@ export default async function SettingsPage() {
           <div className="flex items-end justify-between border-b border-outline-variant pb-2">
             <h2 className="text-xl font-semibold text-on-surface">API Integrations</h2>
             <button type="button" className="text-sm font-semibold text-primary underline underline-offset-4">
-              View Documentation
+              View docs
             </button>
           </div>
 
           <div className="rounded-2xl border border-dashed border-primary/25 bg-primary-container/40 px-4 py-4 text-sm leading-6 text-on-primary-container">
-            n8n tetap menjadi engine untuk semua workflow SEO. Integrasi di sini hanya menyimpan credential dan status
-            koneksi supaya workflow bisa dipanggil otomatis dari website.
+            n8n remains the workflow engine for SEO operations. This page only stores credentials and connection status
+            so the website can trigger workflows automatically.
           </div>
 
           {integrations.length > 0 ? (
@@ -278,7 +278,8 @@ export default async function SettingsPage() {
             <div>
               <h2 className="text-xl font-semibold text-on-surface">API Keys</h2>
               <p className="text-sm leading-6 text-on-surface-variant">
-                Manage your unique keys for programmatic access to the SEO engine, webhooks, and automation scripts.
+                Use API keys when another app, script, or scheduled job needs to talk to the SEO API without signing in
+                as a user.
               </p>
             </div>
             <button
@@ -286,7 +287,7 @@ export default async function SettingsPage() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90"
             >
               <KeyRound className="h-4 w-4" />
-              Create Key
+              Create API key
             </button>
           </div>
 

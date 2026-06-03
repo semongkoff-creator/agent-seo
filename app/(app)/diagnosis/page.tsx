@@ -47,7 +47,7 @@ export default async function DiagnosesPage() {
         <PageHeader
           eyebrow="Diagnoses"
           title="Diagnosis Library"
-          description="A single place to review the latest findings, retrigger a project, or jump back into identify mode."
+          description="Review the latest findings, rerun a project, or jump back into Identify."
           actions={[{ label: 'New Diagnosis', href: '/identify' }]}
         />
 

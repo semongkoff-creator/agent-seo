@@ -88,10 +88,10 @@ export function CreateProjectForm() {
     >
       <div className="flex items-center gap-2">
         <Plus className="h-4 w-4 text-primary" />
-        <h2 className="text-lg font-semibold text-on-surface">Create New Project</h2>
+        <h2 className="text-lg font-semibold text-on-surface">Project details</h2>
       </div>
       <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-        Add a project here, then we will take you straight into the Identify wizard.
+        Add the project details here, then we&apos;ll take you straight into the Identify wizard.
       </p>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -202,7 +202,7 @@ export function CreateProjectForm() {
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-on-surface-variant">
-          The project is created in Supabase, then we&apos;ll open the Identify workflow automatically.
+          The project is saved to Supabase, then we&apos;ll open the Identify workflow automatically.
         </p>
         <button
           type="submit"

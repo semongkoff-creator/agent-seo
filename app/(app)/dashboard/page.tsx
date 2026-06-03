@@ -53,23 +53,23 @@ type WorkflowStep = {
 
 const workflowSteps: WorkflowStep[] = [
   {
-    title: 'Create your project',
-    body: 'Add the domain, audience, and business context so the engine has a clean starting point.',
-    action: 'Start create flow',
+    title: 'Set up a project',
+    body: 'Capture the domain, audience, and business context so n8n has a clean starting point.',
+    action: 'Open project setup',
     href: '/projects#new-project',
     icon: FolderPlus
   },
   {
-    title: 'Run Identify',
-    body: 'Send the brief to n8n to generate diagnosis drafts and collect the first signal set.',
-    action: 'Open identify',
+    title: 'Run identify',
+    body: 'Send the brief to n8n to generate the first diagnosis and collect the signal set.',
+    action: 'Open identify flow',
     href: '/identify',
     icon: Route
   },
   {
-    title: 'Define objective',
+    title: 'Define an objective',
     body: 'Turn the diagnosis into a SMART objective once the problem statement is clear.',
-    action: 'Open objective',
+    action: 'Open objective builder',
     href: '/objective',
     icon: Sparkles
   }
@@ -317,7 +317,7 @@ export default async function DashboardPage() {
         <PageHeader
           eyebrow="Dashboard"
           title="Dashboard Overview"
-          description="Real-time health and performance across active SEO projects. The layout is now tighter, clearer, and easier to start from."
+          description="Track active SEO projects, review the latest signals, and move from setup to n8n-powered execution in fewer steps."
           actions={[
             { label: 'Create Project', href: '/projects#new-project' as any },
             { label: 'Open Projects', href: '/projects' as any }
@@ -341,7 +341,7 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick Start</p>
-              <h2 className="mt-1 text-lg font-semibold text-on-surface">The shortest path from idea to action</h2>
+              <h2 className="mt-1 text-lg font-semibold text-on-surface">The shortest path from brief to workflow</h2>
             </div>
             <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
               Open projects
@@ -380,7 +380,7 @@ export default async function DashboardPage() {
             <div className="px-4 py-4 md:px-6">
               <EmptyState
                 title="No projects yet"
-                body="Create your first project to connect it with the identify workflow. Once n8n returns data, the cards here will populate automatically."
+                body="Create your first project to start the identify workflow. Once n8n returns data, the project cards will populate automatically."
                 actionLabel="Create project"
                 href="/projects#new-project"
               />
@@ -396,7 +396,7 @@ export default async function DashboardPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
                     Recent Diagnoses
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-on-surface">Latest findings</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-on-surface">Latest diagnosis signals</h2>
                 </div>
                 <Link href={'/diagnosis' as any} className="text-sm font-semibold text-primary hover:underline">
                   Open latest
@@ -418,7 +418,7 @@ export default async function DashboardPage() {
                 <div className="px-4 py-4 md:px-6">
                   <EmptyState
                     title="No diagnoses yet"
-                    body="When the identify flow runs through n8n and writes back to Supabase, diagnosis cards will appear here."
+                    body="When identify runs through n8n and writes back to Supabase, the diagnosis cards will appear here."
                     actionLabel="Start identify"
                     href="/identify"
                   />
@@ -433,7 +433,7 @@ export default async function DashboardPage() {
             ) : (
               <EmptyState
                 title="No AI insights yet"
-                body="n8n will create these after diagnoses or objectives are processed, so this space stays honest until data arrives."
+                body="n8n will generate these after diagnoses or objectives are processed, so this space stays honest until data arrives."
                 actionLabel="Open projects"
                 href="/projects"
               />

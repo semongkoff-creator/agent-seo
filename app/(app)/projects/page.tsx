@@ -36,7 +36,7 @@ export default async function ProjectsPage() {
         <PageHeader
           eyebrow="Projects"
           title="Active Projects"
-          description="Manage and monitor each connected domain from one central place. Every project can jump into Identify, Objective, or Campaign in one click."
+          description="Manage each connected domain from one place. Every project can jump into Identify, Objective, or Campaign in one click."
           actions={[{ label: 'Open Identify Hub', href: '/identify' }]}
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -73,7 +73,7 @@ export default async function ProjectsPage() {
               <h2 className="text-lg font-semibold text-on-surface">Create a new project</h2>
             </div>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Open the modal, fill the brief, and we&apos;ll jump straight into Identify without leaving this page.
+              Open the modal, fill the brief, and jump straight into Identify without leaving this page.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <CreateProjectModal />

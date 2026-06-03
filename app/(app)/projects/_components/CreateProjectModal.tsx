@@ -31,7 +31,7 @@ export function CreateProjectModal() {
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-transform hover:-translate-y-0.5"
       >
         <Plus className="h-4 w-4" />
-        New Project
+        New project
       </button>
 
       <dialog
@@ -42,7 +42,7 @@ export function CreateProjectModal() {
         <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4 md:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Quick Create</p>
-            <h2 className="mt-1 text-lg font-semibold text-on-surface">Create project in a modal</h2>
+            <h2 className="mt-1 text-lg font-semibold text-on-surface">Create a project without leaving the page</h2>
           </div>
           <button
             type="button"
