@@ -53,10 +53,9 @@ function optionHint(value: string) {
     yes: 'Confirmed.',
     no: 'Not present or not working.',
     unknown: 'Not sure yet.',
-    growing: 'Traffic is moving up.',
-    declining: 'Traffic trend is down.',
-    stagnant: 'Traffic is flat.',
-    zero: 'No organic traffic yet.'
+    increasing: 'Traffic is moving up.',
+    decreasing: 'Traffic trend is down.',
+    flat: 'Traffic is flat.'
   };
 
   return hints[value] ?? 'Select the best fit.';
@@ -522,7 +521,7 @@ export function IdentifyWizard({
                     </div>
                     {field.type === 'radio' ? (
                       <SegmentedControl
-                        value={String(currentValues[field.name] ?? field.options?.[0]?.value ?? '')}
+                        value={String(currentValues[field.name] ?? '')}
                         options={field.options ?? []}
                         onChange={(next) => updateField(field.name, next)}
                       />

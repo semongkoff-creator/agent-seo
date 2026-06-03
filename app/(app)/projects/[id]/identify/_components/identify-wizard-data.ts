@@ -81,11 +81,10 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
         label: 'Traffic Trend',
         type: 'radio',
         options: [
-          { label: 'Zero', value: 'zero' },
-          { label: 'Declining', value: 'declining' },
-          { label: 'Stagnant', value: 'stagnant' },
-          { label: 'Growing', value: 'growing' },
-          { label: 'Unknown', value: 'unknown' }
+          { label: 'Increasing', value: 'increasing' },
+          { label: 'Flat', value: 'flat' },
+          { label: 'Decreasing', value: 'decreasing' },
+          { label: 'Not sure yet', value: '' }
         ]
       },
       { name: 'indexed_pages', label: 'Indexed Pages', type: 'number', placeholder: '0' },
@@ -288,8 +287,15 @@ export function buildStepState(step: IdentifyStepNumber, source: Record<string, 
 
   if (step === 2) {
     state.website_stage = typeof source.website_stage === 'string' ? source.website_stage : 'existing';
-    state.organic_traffic_trend =
-      typeof source.organic_traffic_trend === 'string' ? source.organic_traffic_trend : 'unknown';
+    const trend = typeof source.organic_traffic_trend === 'string' ? source.organic_traffic_trend : '';
+    const legacyTrendMap: Record<string, string> = {
+      growing: 'increasing',
+      stagnant: 'flat',
+      zero: 'flat',
+      declining: 'decreasing',
+      unknown: ''
+    };
+    state.organic_traffic_trend = legacyTrendMap[trend] ?? trend;
   }
 
   if (step === 5) {
@@ -332,7 +338,13 @@ export function serializeStepState(step: IdentifyStepNumber, state: Record<strin
       return;
     }
 
-    payload[field.name] = typeof value === 'string' ? value.trim() : '';
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        payload[field.name] = trimmed;
+      }
+      return;
+    }
   });
 
   if (step === 1) {
