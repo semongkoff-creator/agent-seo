@@ -26,7 +26,12 @@ export async function getDashboardOverview(userId: string) {
   const objectiveRequest = projectIds.length
     ? db.from('seo_objectives').select('id, status').in('project_id', projectIds)
     : null;
-  const eventsRequest = db.from('usage_events').select('event_type').eq('user_id', userId);
+  const eventsRequest = db
+    .from('usage_events')
+    .select('event_type, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(8);
 
   const [diagnoses, objectives, events] = await Promise.all([
     diagnosisRequest ?? Promise.resolve({ data: [], error: null }),

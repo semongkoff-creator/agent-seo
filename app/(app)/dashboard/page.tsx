@@ -2,8 +2,10 @@ import Link from 'next/link';
 import {
   ArrowUpRight,
   BarChart3,
+  Activity,
   Brain,
   ChevronRight,
+  Clock3,
   FolderPlus,
   Route,
   Sparkles,
@@ -18,6 +20,7 @@ import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview, listDashboardInsights } from '@/lib/services/dashboard';
 import { listDiagnoses } from '@/lib/services/diagnoses';
 import { listProjects } from '@/lib/services/projects';
+import { formatWibDateTime } from '@/lib/time';
 
 type ProjectRowData = {
   id: string;
@@ -51,6 +54,11 @@ type WorkflowStep = {
   icon: typeof FolderPlus;
 };
 
+type ActivityRow = {
+  event_type?: string | null;
+  created_at?: string | null;
+};
+
 const workflowSteps: WorkflowStep[] = [
   {
     title: 'Set up a project',
@@ -74,6 +82,49 @@ const workflowSteps: WorkflowStep[] = [
     icon: Sparkles
   }
 ];
+
+const activityLabels: Record<string, string> = {
+  project_created: 'Project created',
+  diagnosis_run: 'Diagnosis run',
+  objective_generated: 'Objective generated',
+  api_request: 'API request'
+};
+
+function getNextAction(projectCount: number, diagnosisCount: number, objectiveCount: number) {
+  if (projectCount === 0) {
+    return {
+      title: 'Create your first project',
+      body: 'Capture the domain and business goal first, then hand the brief over to n8n.',
+      action: 'New project',
+      href: '/projects#new-project'
+    };
+  }
+
+  if (diagnosisCount === 0) {
+    return {
+      title: 'Run the identify workflow',
+      body: 'Let n8n analyze the brief and return the first diagnosis signal set.',
+      action: 'Start identify',
+      href: '/identify'
+    };
+  }
+
+  if (objectiveCount === 0) {
+    return {
+      title: 'Define a smart objective',
+      body: 'Turn the latest diagnosis into a clear objective with measurable outcomes.',
+      action: 'Open objective',
+      href: '/objective'
+    };
+  }
+
+  return {
+    title: 'Review live projects',
+    body: 'The workflow is already moving. Open projects to refine the next campaign steps.',
+    action: 'Open projects',
+    href: '/projects'
+  };
+}
 
 function Sparkline() {
   return (
@@ -253,6 +304,17 @@ function mapDiagnoses(source: Awaited<ReturnType<typeof listDiagnoses>>['items']
   });
 }
 
+function mapActivityCounts(source: ActivityRow[]) {
+  const counts = Object.entries(activityLabels).map(([eventType, label]) => {
+    const count = source.filter((item) => item.event_type === eventType).length;
+    return { label, count };
+  });
+
+  const latest = source[0]?.created_at ?? null;
+
+  return { counts, latest };
+}
+
 function EmptyState({
   title,
   body,
@@ -310,9 +372,19 @@ export default async function DashboardPage() {
   const projectRows = mapProjectRows(projectData.items);
   const diagnosisRows = mapDiagnoses(diagnosisData.items);
   const insights = mapInsights(insightData.items);
+  const activityData = mapActivityCounts(overview.recentEvents as ActivityRow[]);
+  const nextAction = getNextAction(overview.projectCount, overview.completedDiagnoses, overview.completedObjectives);
+  const activeProjectSummary =
+    projectRows[0]?.name ?? (overview.projectCount > 0 ? 'Workspace active' : 'Workspace waiting');
+  const latestDiagnosisSummary =
+    diagnosisRows[0]?.title ?? (overview.completedDiagnoses > 0 ? 'Latest diagnosis available' : 'No diagnosis yet');
 
   return (
-    <div className="px-4 py-6 md:px-6 lg:px-8">
+    <div className="relative overflow-hidden px-4 py-6 md:px-6 lg:px-8">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] bg-[radial-gradient(circle_at_top_left,_rgba(78,70,229,0.18),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(99,102,241,0.12),_transparent_28%),linear-gradient(180deg,_rgba(255,255,255,0.8),_rgba(255,255,255,0))]"
+      />
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <PageHeader
           eyebrow="Dashboard"
@@ -323,6 +395,110 @@ export default async function DashboardPage() {
             { label: 'Open Projects', href: '/projects' as any }
           ]}
         />
+
+        <section className="overflow-hidden rounded-[2rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+            <div className="relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(78,70,229,0.12),_transparent_35%),radial-gradient(circle_at_bottom_left,_rgba(99,102,241,0.08),_transparent_30%)]"
+              />
+              <div className="relative flex flex-col gap-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary-container px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                    <Activity className="h-4 w-4" />
+                    Live workspace
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                    <Clock3 className="h-4 w-4" />
+                    Jakarta time
+                    <span className="normal-case tracking-normal">
+                      {activityData.latest ? formatWibDateTime(activityData.latest) : 'Waiting for first event'}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="max-w-3xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                    Orchestrated by n8n
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-on-surface md:text-3xl">
+                    One view for the entire SEO engine.
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant md:text-base">
+                    Website actions trigger the backend, n8n runs the workflow, and Supabase stores the result. This
+                    panel shows the live state of that loop without any placeholder data.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      Projects
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.projectCount}</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      {overview.activeProjectCount} active, {Math.max(0, overview.projectCount - overview.activeProjectCount)} archived
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      Diagnoses
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.completedDiagnoses}</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">Signals returned from n8n workflows</p>
+                  </div>
+                  <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      Objectives
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-on-surface">{overview.completedObjectives}</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">SMART targets ready for execution</p>
+                  </div>
+                  <div className="rounded-2xl border border-outline-variant bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      Next action
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-on-surface">{nextAction.title}</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">{nextAction.body}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-outline-variant bg-surface-container-low px-5 py-5 sm:px-6 sm:py-6 lg:border-l lg:border-t-0 lg:px-7 lg:py-8">
+              <div className="flex h-full flex-col justify-between gap-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                    Recommended action
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-on-surface">{nextAction.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-on-surface-variant">{nextAction.body}</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Link
+                    href={nextAction.href as any}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90"
+                  >
+                    {nextAction.action}
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                  <div className="grid grid-cols-2 gap-3">
+                    {activityData.counts.map((activity) => (
+                      <div key={activity.label} className="rounded-2xl border border-outline-variant bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                          {activity.label}
+                        </p>
+                        <p className="mt-2 text-2xl font-semibold text-on-surface">{activity.count}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {metrics.map((metric) => (
@@ -388,7 +564,7 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        <section className="flex flex-col gap-6 xl:flex-row">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex-1">
             <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-sm">
               <div className="flex items-center justify-between border-b border-outline-variant px-4 py-4 md:px-6">
@@ -427,16 +603,30 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <aside className="flex w-full flex-col gap-4 xl:w-80">
+          <aside className="flex w-full flex-col gap-4 xl:sticky xl:top-24 xl:self-start">
             {insights.length > 0 ? (
               insights.map((insight) => <InsightCard key={insight.title} insight={insight} />)
             ) : (
-              <EmptyState
-                title="No AI insights yet"
-                body="n8n will generate these after diagnoses or objectives are processed, so this space stays honest until data arrives."
-                actionLabel="Open projects"
-                href="/projects"
-              />
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Workspace pulse</p>
+                <h3 className="mt-2 text-lg font-semibold text-on-surface">{activeProjectSummary}</h3>
+                <p className="mt-2 text-sm leading-6 text-on-surface-variant">{latestDiagnosisSummary}</p>
+                <div className="mt-4 rounded-2xl bg-primary-container p-4 text-on-primary-container">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-primary-container/80">
+                    n8n status
+                  </p>
+                  <p className="mt-2 text-sm leading-6">
+                    Use the workflow engine to keep identify, diagnosis, and objective generation in sync.
+                  </p>
+                  <Link
+                    href="/projects"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-semibold"
+                  >
+                    Open projects
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
             )}
           </aside>
         </section>
