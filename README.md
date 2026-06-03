@@ -13,7 +13,7 @@ Prototype HTML reference + upcoming Next.js app foundation.
 1. Install dependencies with `pnpm install`.
 2. Copy `.env.example` to `.env.local` and fill in the values.
 3. For Supabase, set `DATABASE_URL` and `DIRECT_URL` to your pooler URLs, and fill `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
-4. For n8n, set at least one workflow URL. In this repo, `N8N_IDENTIFY_WEBHOOK_URL` is used for identify, and `N8N_OBJECTIVE_WEBHOOK_URL` can be added later. `N8N_WEBHOOK_URL` is optional shared fallback for objective, then fill `N8N_WEBHOOK_SECRET` for BE -> n8n signing and `APP_WEBHOOK_SECRET` for n8n -> BE callback verification.
+4. For n8n, set the production workflow URLs. In this repo, `N8N_IDENTIFY_WEBHOOK_URL` is used for identify and `N8N_OBJECTIVE_WEBHOOK_URL` is used for objective. `N8N_WEBHOOK_URL` remains an optional shared fallback, then fill `N8N_WEBHOOK_SECRET` for BE -> n8n signing and `APP_WEBHOOK_SECRET` for n8n -> BE callback verification.
 5. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
 6. Start development with `pnpm dev`.
 
@@ -32,9 +32,9 @@ Prototype HTML reference + upcoming Next.js app foundation.
 
 - `index.html` redirects to `reference-html/dashboard.html`.
 - The HTML files remain as design references while we build the app structure in Next.js.
-- The identify flow is wired to `N8N_IDENTIFY_WEBHOOK_URL`; set it to your n8n webhook endpoint in `.env.local`.
+- The identify flow is wired to `N8N_IDENTIFY_WEBHOOK_URL`; in production this should point to your live n8n webhook endpoint in `.env.local`.
 - The outbound identify payload keeps both the merged form data and the original per-step drafts, so the n8n workflow can inspect raw inputs and final context together.
-- The objective flow uses `N8N_OBJECTIVE_WEBHOOK_URL` when you add it later; until then it will fall back to `N8N_WEBHOOK_URL` if you choose to reuse one workflow.
+- The objective flow uses `N8N_OBJECTIVE_WEBHOOK_URL` in production; it still falls back to `N8N_WEBHOOK_URL` if you choose to reuse one workflow.
 - The canonical outbound job payload builders live in `lib/n8n/contracts.ts`.
 - The same file also holds callback payload helpers for `diagnosis-complete`, `objective-complete`, and `job-failed`.
 - The identify flow signs outgoing requests with `N8N_WEBHOOK_SECRET`, and the n8n callback routes verify `APP_WEBHOOK_SECRET`.

@@ -14,7 +14,12 @@ export async function GET() {
     dbStatus = 'fail';
   }
 
-  if (process.env.N8N_WEBHOOK_URL && process.env.N8N_WEBHOOK_SECRET) {
+  const hasN8nEndpoint =
+    Boolean(process.env.N8N_WEBHOOK_URL) ||
+    Boolean(process.env.N8N_IDENTIFY_WEBHOOK_URL) ||
+    Boolean(process.env.N8N_OBJECTIVE_WEBHOOK_URL);
+
+  if (hasN8nEndpoint && process.env.N8N_WEBHOOK_SECRET) {
     n8nStatus = 'ok';
   }
 
