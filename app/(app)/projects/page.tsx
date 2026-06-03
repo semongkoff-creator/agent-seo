@@ -65,7 +65,7 @@ export default async function ProjectsPage() {
           </div>
         </PageHeader>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div id="new-project" className="grid scroll-mt-24 grid-cols-1 gap-4 md:grid-cols-2">
           <CreateProjectForm />
           <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick stats</p>

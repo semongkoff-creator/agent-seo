@@ -48,7 +48,7 @@ export function Sidebar() {
 
       <div className="mt-auto border-t border-outline-variant pt-md">
         <Link
-          href="/identify"
+          href="/projects#new-project"
           className="mb-md flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-semibold text-on-primary transition-opacity hover:opacity-90"
         >
           <Plus className="h-4 w-4" />

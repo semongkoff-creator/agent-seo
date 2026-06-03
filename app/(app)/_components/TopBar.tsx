@@ -45,7 +45,7 @@ export function TopBar() {
             <History className="h-5 w-5" />
           </button>
           <Link
-            href="/identify"
+            href="/projects"
             className="hidden min-h-11 items-center justify-center rounded-lg border border-outline-variant px-4 py-3 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high md:inline-flex"
           >
             Export Data

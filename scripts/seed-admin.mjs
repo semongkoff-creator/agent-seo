@@ -1,3 +1,4 @@
+import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.SUPABASE_URL;
@@ -14,6 +15,16 @@ if (!adminEmail || !adminPassword) {
   throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required');
 }
 
+function hashPassword(password) {
+  const salt = randomBytes(16);
+  const derived = scryptSync(password, salt, 64);
+  return `v1.${salt.toString('hex')}.${derived.toString('hex')}`;
+}
+
+function createTokenHash(token) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
 const client = createClient(url, serviceKey, {
   auth: {
     autoRefreshToken: false,
@@ -22,59 +33,39 @@ const client = createClient(url, serviceKey, {
   }
 });
 
-const { data: page, error: listError } = await client.auth.admin.listUsers({
-  page: 1,
-  perPage: 1000
-});
+const { data: account, error: accountLookupError } = await client
+  .from('auth_accounts')
+  .select('id, email')
+  .eq('email', adminEmail.toLowerCase())
+  .maybeSingle();
 
-if (listError) {
-  throw listError;
+if (accountLookupError) {
+  throw accountLookupError;
 }
 
-const existing = page.users.find((user) => (user.email ?? '').toLowerCase() === adminEmail.toLowerCase());
+const userId = account?.id ?? randomUUID();
+const passwordHash = hashPassword(adminPassword);
 
-let userId;
+const { error: upsertAuthError } = await client.from('auth_accounts').upsert({
+  id: userId,
+  email: adminEmail.toLowerCase(),
+  password_hash: passwordHash,
+  status: 'active',
+  full_name: adminFullName,
+  avatar_url: null,
+  role: 'admin',
+  email_verified_at: new Date().toISOString(),
+  password_updated_at: new Date().toISOString(),
+  last_login_at: new Date().toISOString()
+});
 
-if (existing) {
-  const { error: updateError } = await client.auth.admin.updateUserById(existing.id, {
-    password: adminPassword,
-    email_confirm: true,
-    user_metadata: {
-      full_name: adminFullName
-    }
-  });
-
-  if (updateError) {
-    throw updateError;
-  }
-
-  userId = existing.id;
-  console.log(`Updated admin auth user ${adminEmail}`);
-} else {
-  const { data, error: createError } = await client.auth.admin.createUser({
-    email: adminEmail,
-    password: adminPassword,
-    email_confirm: true,
-    user_metadata: {
-      full_name: adminFullName
-    }
-  });
-
-  if (createError) {
-    throw createError;
-  }
-
-  if (!data.user) {
-    throw new Error('Failed to create admin auth user');
-  }
-
-  userId = data.user.id;
-  console.log(`Created admin auth user ${adminEmail}`);
+if (upsertAuthError) {
+  throw upsertAuthError;
 }
 
 const { error: profileError } = await client.from('users').upsert({
   id: userId,
-  email: adminEmail,
+  email: adminEmail.toLowerCase(),
   full_name: adminFullName,
   role: 'admin',
   timezone: 'Asia/Jakarta'
@@ -84,4 +75,4 @@ if (profileError) {
   throw profileError;
 }
 
-console.log(`Synced admin profile ${adminEmail} -> ${userId}`);
+console.log(`Synced local admin auth account ${adminEmail} -> ${userId}`);

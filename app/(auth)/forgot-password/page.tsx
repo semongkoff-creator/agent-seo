@@ -18,6 +18,7 @@ import {
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +27,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError(null);
     setMessage(null);
+    setResetLink(null);
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
@@ -40,6 +42,9 @@ export default function ForgotPasswordPage() {
       }
 
       setMessage('Reset instructions were sent if the email exists.');
+      if (body?.data?.resetUrl) {
+        setResetLink(body.data.resetUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset email');
     } finally {
@@ -79,9 +84,14 @@ export default function ForgotPasswordPage() {
           </p>
         ) : null}
         {message ? (
-          <p className={authSuccessClass}>
-            {message}
-          </p>
+          <div className={authSuccessClass}>
+            <p>{message}</p>
+            {resetLink ? (
+              <p className="mt-2 break-all text-sm font-medium">
+                Dev reset link: <Link href={resetLink as any}>{resetLink}</Link>
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         <button

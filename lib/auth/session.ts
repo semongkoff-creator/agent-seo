@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db } from '@/lib/db/client';
 import { AppError } from '@/lib/errors';
 import { authCookieNames } from '@/lib/auth/cookies';
+import { hashToken } from '@/lib/auth/local-auth';
 
 export type SessionUser = {
   id: string;
@@ -52,6 +53,10 @@ function getAuthorizationToken(): string | null {
   return cookieToken;
 }
 
+export function getCurrentAuthToken(): string | null {
+  return getAuthorizationToken();
+}
+
 function hashKey(key: string) {
   return createHash('sha256').update(key).digest('hex');
 }
@@ -95,6 +100,50 @@ async function getSupabaseUserFromToken(token: string) {
   };
 }
 
+async function getLocalUserFromToken(token: string) {
+  const { data: session, error: sessionError } = await db
+    .from('auth_sessions')
+    .select('id, auth_account_id, revoked_at, expires_at')
+    .eq('access_token_hash', hashToken(token))
+    .maybeSingle();
+
+  if (sessionError) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to load local session', 500, {
+      cause: sessionError.message
+    });
+  }
+
+  if (!session || session.revoked_at || new Date(session.expires_at).getTime() < Date.now()) {
+    return null;
+  }
+
+  const { data: account, error: accountError } = await db
+    .from('auth_accounts')
+    .select('id, email, full_name, avatar_url, role')
+    .eq('id', session.auth_account_id)
+    .maybeSingle();
+
+  if (accountError) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to load local auth account', 500, {
+      cause: accountError.message
+    });
+  }
+
+  if (!account) {
+    return null;
+  }
+
+  await db.from('auth_sessions').update({ last_used_at: new Date().toISOString() }).eq('id', session.id);
+
+  return {
+    id: account.id,
+    email: account.email,
+    fullName: account.full_name ?? null,
+    avatarUrl: account.avatar_url ?? null,
+    role: account.role ?? null
+  };
+}
+
 export async function getUser(): Promise<SessionUser | null> {
   const userId = readHeader('x-user-id');
   if (!userId) {
@@ -103,7 +152,22 @@ export async function getUser(): Promise<SessionUser | null> {
       return null;
     }
 
-    return getSupabaseUserFromToken(token);
+    try {
+      const localUser = await getLocalUserFromToken(token);
+      if (localUser) {
+        return localUser;
+      }
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode >= 500) {
+        throw error;
+      }
+    }
+
+    try {
+      return await getSupabaseUserFromToken(token);
+    } catch {
+      return null;
+    }
   }
 
   return {

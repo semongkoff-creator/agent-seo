@@ -74,6 +74,66 @@ export const aiInsightKindEnum = pgEnum('ai_insight_kind', ['opportunity', 'anom
 const createdAt = timestamp('created_at', { withTimezone: true }).defaultNow().notNull();
 const updatedAt = timestamp('updated_at', { withTimezone: true }).defaultNow().notNull();
 
+export const authAccountStatusEnum = pgEnum('auth_account_status', ['active', 'disabled']);
+
+export const authAccounts = pgTable(
+  'auth_accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    status: authAccountStatusEnum('status').notNull().default('active'),
+    fullName: text('full_name'),
+    avatarUrl: text('avatar_url'),
+    role: userRoleEnum('role').notNull().default('member'),
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    passwordUpdatedAt: timestamp('password_updated_at', { withTimezone: true }).defaultNow().notNull(),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    createdAt,
+    updatedAt
+  },
+  () => ({})
+);
+
+export const authSessions = pgTable(
+  'auth_sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    authAccountId: uuid('auth_account_id')
+      .notNull()
+      .references(() => authAccounts.id, { onDelete: 'cascade' }),
+    accessTokenHash: text('access_token_hash').notNull().unique(),
+    refreshTokenHash: text('refresh_token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt
+  },
+  (table) => ({
+    accountIdx: index('auth_sessions_account_idx').on(table.authAccountId),
+    accessHashIdx: index('auth_sessions_access_hash_idx').on(table.accessTokenHash),
+    refreshHashIdx: index('auth_sessions_refresh_hash_idx').on(table.refreshTokenHash)
+  })
+);
+
+export const authPasswordResets = pgTable(
+  'auth_password_resets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    authAccountId: uuid('auth_account_id')
+      .notNull()
+      .references(() => authAccounts.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt
+  },
+  (table) => ({
+    accountIdx: index('auth_password_resets_account_idx').on(table.authAccountId),
+    tokenHashIdx: index('auth_password_resets_token_hash_idx').on(table.tokenHash)
+  })
+);
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   email: text('email').notNull().unique(),

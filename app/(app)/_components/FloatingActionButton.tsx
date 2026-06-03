@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 
-export function FloatingActionButton({ href = '/identify' }: { href?: string }) {
+export function FloatingActionButton({ href = '/projects#new-project' }: { href?: string }) {
   return (
     <Link
       href={href as any}
