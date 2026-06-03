@@ -16,14 +16,24 @@ import { SeverityBadge } from '@/components/ui/severity-badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview, listDashboardInsights } from '@/lib/services/dashboard';
+import { listDiagnoses } from '@/lib/services/diagnoses';
 import { listProjects } from '@/lib/services/projects';
 
 type ProjectRowData = {
+  id: string;
   name: string;
   industry: string;
   visibility: string;
   score: number;
   trend: string;
+};
+
+type DiagnosisRowData = {
+  id: string;
+  project: string;
+  title: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  summary: string;
 };
 
 type InsightRowData = {
@@ -40,69 +50,6 @@ type WorkflowStep = {
   href: string;
   icon: typeof FolderPlus;
 };
-
-const fallbackProjects = [
-  {
-    name: 'NeuralLink.ai',
-    industry: 'B2B SaaS / Content Ops',
-    visibility: '24.5k',
-    score: 78,
-    trend: 'Up 12%'
-  },
-  {
-    name: 'Northstar Dental',
-    industry: 'Local / Healthcare',
-    visibility: '8.4k',
-    score: 61,
-    trend: 'Down 4%'
-  },
-  {
-    name: 'Atlas Commerce',
-    industry: 'Ecommerce / Retail',
-    visibility: '31.9k',
-    score: 83,
-    trend: 'Up 8%'
-  }
-] as const;
-
-const diagnoses = [
-  {
-    title: 'Relevance Gap',
-    project: 'NeuralLink.ai',
-    severity: 'High',
-    summary: 'Content clusters are not aligned with high-intent search queries.',
-    href: '/projects'
-  },
-  {
-    title: 'Technical Bottleneck',
-    project: 'Northstar Dental',
-    severity: 'Medium',
-    summary: 'Indexability is limited by crawl depth and missing internal links.',
-    href: '/projects'
-  },
-  {
-    title: 'Authority Deficit',
-    project: 'Atlas Commerce',
-    severity: 'Critical',
-    summary: 'Competitors are outranking due to stronger referring domain profiles.',
-    href: '/projects'
-  }
-] as const;
-
-const fallbackInsights = [
-  {
-    title: 'Your highest-leverage fix is still relevance.',
-    body: 'Across active projects, content intent alignment is the most common constraint on organic growth.',
-    action: 'Review gap analysis',
-    href: '/diagnosis'
-  },
-  {
-    title: 'Two projects are ready for an objective.',
-    body: 'Once diagnosis is completed, SMART objective generation can move immediately.',
-    action: 'Open objectives',
-    href: '/objective'
-  }
-] as const;
 
 const workflowSteps: WorkflowStep[] = [
   {
@@ -146,7 +93,10 @@ function Sparkline() {
 
 function ProjectRow({ project }: { project: ProjectRowData }) {
   return (
-    <div className="rounded-2xl border border-outline-variant bg-white p-4 md:p-5">
+    <Link
+      href={`/projects/${project.id}` as any}
+      className="block rounded-2xl border border-outline-variant bg-white p-4 transition-transform hover:-translate-y-0.5 md:p-5"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-lg font-semibold text-on-surface">{project.name}</p>
@@ -178,14 +128,14 @@ function ProjectRow({ project }: { project: ProjectRowData }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
-function DiagnosisCard({ diagnosis }: { diagnosis: (typeof diagnoses)[number] }) {
+function DiagnosisCard({ diagnosis }: { diagnosis: DiagnosisRowData }) {
   return (
     <Link
-      href={diagnosis.href as any}
+      href={`/diagnosis/${diagnosis.id}` as any}
       className="snap-start rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm transition-transform hover:-translate-y-0.5 md:p-5"
     >
       <div className="flex items-start justify-between gap-3">
@@ -193,7 +143,7 @@ function DiagnosisCard({ diagnosis }: { diagnosis: (typeof diagnoses)[number] })
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">{diagnosis.project}</p>
           <h3 className="mt-2 text-lg font-semibold text-on-surface">{diagnosis.title}</h3>
         </div>
-        <SeverityBadge severity={diagnosis.severity.toLowerCase() as 'low' | 'medium' | 'high' | 'critical'} label={diagnosis.severity} />
+        <SeverityBadge severity={diagnosis.severity} label={diagnosis.severity} />
       </div>
       <p className="mt-3 text-sm leading-6 text-on-surface-variant">{diagnosis.summary}</p>
       <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
@@ -265,6 +215,7 @@ function mapInsights(source: Awaited<ReturnType<typeof listDashboardInsights>>['
 function mapProjectRows(source: Awaited<ReturnType<typeof listProjects>>['items']): ProjectRowData[] {
   return source.map((project, index) => {
     const record = project as Record<string, unknown>;
+    const id = String(record.id ?? '');
     const name = typeof record.name === 'string' && record.name ? record.name : `Project ${index + 1}`;
     const industry = typeof record.industry === 'string' && record.industry ? record.industry : 'Uncategorized';
     const goal = typeof record.main_business_goal === 'string' ? record.main_business_goal : 'n/a';
@@ -272,6 +223,7 @@ function mapProjectRows(source: Awaited<ReturnType<typeof listProjects>>['items'
     const currentStep = typeof record.current_step === 'number' ? record.current_step : index + 1;
 
     return {
+      id,
       name,
       industry,
       visibility: `${goal} - step ${currentStep}`,
@@ -281,10 +233,54 @@ function mapProjectRows(source: Awaited<ReturnType<typeof listProjects>>['items'
   });
 }
 
+function mapDiagnoses(source: Awaited<ReturnType<typeof listDiagnoses>>['items']): DiagnosisRowData[] {
+  return source.map((item, index) => {
+    const record = item as Record<string, unknown>;
+    const id = String(record.id ?? '');
+    const project = typeof record.project_name === 'string' && record.project_name ? record.project_name : `Project ${index + 1}`;
+    const title = typeof record.primary_problem_type === 'string' && record.primary_problem_type
+      ? record.primary_problem_type.replace(/_/g, ' ')
+      : 'Diagnosis';
+    const summary = typeof record.diagnosis_summary === 'string' && record.diagnosis_summary
+      ? record.diagnosis_summary
+      : 'Diagnosis summary will appear after n8n completes the workflow.';
+    const severity =
+      typeof record.severity === 'string' && ['low', 'medium', 'high', 'critical'].includes(record.severity)
+        ? (record.severity as DiagnosisRowData['severity'])
+        : 'medium';
+
+    return { id, project, title, summary, severity };
+  });
+}
+
+function EmptyState({
+  title,
+  body,
+  actionLabel,
+  href
+}: {
+  title: string;
+  body: string;
+  actionLabel: string;
+  href: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-outline-variant bg-surface-container-low p-6">
+      <h3 className="text-lg font-semibold text-on-surface">{title}</h3>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-on-surface-variant">{body}</p>
+      <Link href={href as any} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+        {actionLabel}
+        <ArrowUpRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
   const user = await requireUser();
   const overview = await getDashboardOverview(user.id);
   const projectData = await listProjects(user.id, { page: 1, limit: 3 });
+  const diagnosisData = await listDiagnoses(user.id, { page: 1, limit: 3 });
   const insightData = await listDashboardInsights(user.id);
 
   const metrics = [
@@ -311,8 +307,9 @@ export default async function DashboardPage() {
     }
   ] as const;
 
-  const projectRows = projectData.items.length > 0 ? mapProjectRows(projectData.items) : fallbackProjects;
-  const insights = insightData.items.length > 0 ? mapInsights(insightData.items) : fallbackInsights;
+  const projectRows = mapProjectRows(projectData.items);
+  const diagnosisRows = mapDiagnoses(diagnosisData.items);
+  const insights = mapInsights(insightData.items);
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -322,8 +319,8 @@ export default async function DashboardPage() {
           title="Dashboard Overview"
           description="Real-time health and performance across active SEO projects. The layout is now tighter, clearer, and easier to start from."
           actions={[
-            { label: 'Create Project', href: '/projects#new-project' },
-            { label: 'Open Projects', href: '/projects' }
+            { label: 'Create Project', href: '/projects#new-project' as any },
+            { label: 'Open Projects', href: '/projects' as any }
           ]}
         />
 
@@ -346,7 +343,7 @@ export default async function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Quick Start</p>
               <h2 className="mt-1 text-lg font-semibold text-on-surface">The shortest path from idea to action</h2>
             </div>
-            <Link href="/projects" className="text-sm font-semibold text-primary hover:underline">
+            <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
               Open projects
             </Link>
           </div>
@@ -366,18 +363,29 @@ export default async function DashboardPage() {
               </p>
               <h2 className="mt-1 text-lg font-semibold text-on-surface">Visibility, authority, and trend</h2>
             </div>
-            <Link href="/projects" className="text-sm font-semibold text-primary hover:underline">
+            <Link href={'/projects' as any} className="text-sm font-semibold text-primary hover:underline">
               View all
             </Link>
           </div>
 
-          <HorizontalScrollSnap className="px-4 py-4 md:overflow-visible md:px-6" contentClassName="md:grid md:grid-cols-1">
-            {projectRows.map((project) => (
-              <div key={project.name} className="min-w-[280px] md:min-w-0">
-                <ProjectRow project={project} />
-              </div>
-            ))}
-          </HorizontalScrollSnap>
+          {projectRows.length > 0 ? (
+            <HorizontalScrollSnap className="px-4 py-4 md:overflow-visible md:px-6" contentClassName="md:grid md:grid-cols-1">
+              {projectRows.map((project) => (
+                <div key={project.id} className="min-w-[280px] md:min-w-0">
+                  <ProjectRow project={project} />
+                </div>
+              ))}
+            </HorizontalScrollSnap>
+          ) : (
+            <div className="px-4 py-4 md:px-6">
+              <EmptyState
+                title="No projects yet"
+                body="Create your first project to connect it with the identify workflow. Once n8n returns data, the cards here will populate automatically."
+                actionLabel="Create project"
+                href="/projects#new-project"
+              />
+            </div>
+          )}
         </section>
 
         <section className="flex flex-col gap-6 xl:flex-row">
@@ -390,28 +398,46 @@ export default async function DashboardPage() {
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-on-surface">Latest findings</h2>
                 </div>
-                <Link href="/diagnosis" className="text-sm font-semibold text-primary hover:underline">
+                <Link href={'/diagnosis' as any} className="text-sm font-semibold text-primary hover:underline">
                   Open latest
                 </Link>
               </div>
 
-              <HorizontalScrollSnap
-                className="px-4 py-4 md:overflow-visible md:px-6"
-                contentClassName="md:grid md:grid-cols-2 xl:grid-cols-3"
-              >
-                {diagnoses.map((diagnosis) => (
-                  <div key={diagnosis.title} className="min-w-[260px] md:min-w-0">
-                    <DiagnosisCard diagnosis={diagnosis} />
-                  </div>
-                ))}
-              </HorizontalScrollSnap>
+              {diagnosisRows.length > 0 ? (
+                <HorizontalScrollSnap
+                  className="px-4 py-4 md:overflow-visible md:px-6"
+                  contentClassName="md:grid md:grid-cols-2 xl:grid-cols-3"
+                >
+                  {diagnosisRows.map((diagnosis) => (
+                    <div key={diagnosis.id} className="min-w-[260px] md:min-w-0">
+                      <DiagnosisCard diagnosis={diagnosis} />
+                    </div>
+                  ))}
+                </HorizontalScrollSnap>
+              ) : (
+                <div className="px-4 py-4 md:px-6">
+                  <EmptyState
+                    title="No diagnoses yet"
+                    body="When the identify flow runs through n8n and writes back to Supabase, diagnosis cards will appear here."
+                    actionLabel="Start identify"
+                    href="/identify"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
           <aside className="flex w-full flex-col gap-4 xl:w-80">
-            {insights.map((insight) => (
-              <InsightCard key={insight.title} insight={insight} />
-            ))}
+            {insights.length > 0 ? (
+              insights.map((insight) => <InsightCard key={insight.title} insight={insight} />)
+            ) : (
+              <EmptyState
+                title="No AI insights yet"
+                body="n8n will create these after diagnoses or objectives are processed, so this space stays honest until data arrives."
+                actionLabel="Open projects"
+                href="/projects"
+              />
+            )}
           </aside>
         </section>
       </section>
