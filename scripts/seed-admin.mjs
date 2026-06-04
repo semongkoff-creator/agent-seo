@@ -1,11 +1,60 @@
 import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminEmail = process.env.ADMIN_EMAIL;
-const adminPassword = process.env.ADMIN_PASSWORD;
-const adminFullName = process.env.ADMIN_FULL_NAME ?? 'Admin';
+function parseEnvFile(filePath) {
+  const result = {};
+
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    raw.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) {
+        return;
+      }
+
+      const equalsIndex = trimmed.indexOf('=');
+      if (equalsIndex === -1) {
+        return;
+      }
+
+      const key = trimmed.slice(0, equalsIndex).trim();
+      let value = trimmed.slice(equalsIndex + 1).trim();
+
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+
+      result[key] = value;
+    });
+  } catch {
+    // Ignore missing env file; runtime env takes priority.
+  }
+
+  return result;
+}
+
+function loadEnv() {
+  const envPath = resolve(process.cwd(), '.env.local');
+  const fileEnv = parseEnvFile(envPath);
+
+  return {
+    SUPABASE_URL: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? fileEnv.SUPABASE_URL ?? fileEnv.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY:
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? fileEnv.SUPABASE_SERVICE_ROLE_KEY,
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? fileEnv.ADMIN_EMAIL,
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? fileEnv.ADMIN_PASSWORD,
+    ADMIN_FULL_NAME: process.env.ADMIN_FULL_NAME ?? fileEnv.ADMIN_FULL_NAME ?? 'Admin'
+  };
+}
+
+const env = loadEnv();
+const url = env.SUPABASE_URL;
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+const adminEmail = env.ADMIN_EMAIL;
+const adminPassword = env.ADMIN_PASSWORD;
+const adminFullName = env.ADMIN_FULL_NAME;
 
 if (!url || !serviceKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');

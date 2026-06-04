@@ -53,7 +53,8 @@ export async function triggerJob(payload: N8nTriggerPayload) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-app-signature': signature
+      'x-app-signature': signature,
+      'X-Webhook-Secret': secret
     },
     body
   });

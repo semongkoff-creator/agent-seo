@@ -1,63 +1,63 @@
 {
-  "name": "SEO Agent - Define Objective",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "seo-agent/define-objective",
-        "responseMode": "responseNode"
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "objective-webhook",
+      "id": "efa3f518-9cfa-4926-a078-ac7f4cebe9b1",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        320,
-        300
-      ]
+        -80,
+        352
+      ],
+      "webhookId": "8d5e63ee-9fd3-5cff-c1g0-g2gdbgge2ggc"
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst payload = input.body ?? input.payload ?? input;\n\nreturn [{\n  json: {\n    ...input,\n    payload,\n    job_id: input.job_id ?? payload.job_id ?? payload?.job?.id,\n    project_id: input.project_id ?? payload.project_id ?? payload?.project?.id,\n    user_id: input.user_id ?? payload.user_id ?? payload?.user?.id,\n    diagnosis_id: input.diagnosis_id ?? payload.diagnosis_id ?? payload?.diagnosis?.id,\n    objective_id: input.objective_id ?? payload.objective_id ?? payload?.objective?.id,\n    diagnosis_result: input.diagnosis_result ?? payload.diagnosis_result ?? payload?.diagnosisResult ?? {},\n    objective_input: input.objective_input ?? payload.objective_input ?? payload?.objectiveInput ?? {}\n  }\n}];"
+        "jsCode": "// Extract & normalize payload from any BE format (camelCase OR snake_case)\nconst raw = $input.first().json;\nconst body = raw.body ?? raw;\n\nconst pick = (...vals) => vals.find(v => v !== undefined && v !== null && v !== '') ?? null;\n\n// Extract IDs from any location\nconst job_id = pick(\n  body.job_id, body.jobId,\n  body.payload?.job_id, body.payload?.jobId,\n  body.payload?.job?.id\n);\n\nconst project_id = pick(\n  body.project_id, body.projectId,\n  body.payload?.project_id, body.payload?.projectId,\n  body.payload?.project?.id\n);\n\nconst user_id = pick(\n  body.user_id, body.userId,\n  body.payload?.user_id, body.payload?.userId,\n  body.payload?.user?.id\n);\n\nconst objective_id = pick(\n  body.objective_id, body.objectiveId,\n  body.payload?.objective_id, body.payload?.objectiveId,\n  body.payload?.objective?.id\n);\n\nconst diagnosis_id = pick(\n  body.diagnosis_id, body.diagnosisId,\n  body.payload?.diagnosis_id, body.payload?.diagnosisId,\n  body.payload?.diagnosis?.id\n);\n\nconst input_id = pick(\n  body.input_id, body.inputId,\n  body.payload?.input_id, body.payload?.inputId\n);\n\n// Validate critical IDs\nif (!job_id || !project_id || !objective_id) {\n  throw new Error(`Missing required IDs. job_id=${job_id}, project_id=${project_id}, objective_id=${objective_id}`);\n}\n\n// Extract Define Objective-specific payload\nconst payload = body.payload ?? body;\nconst objective_input = pick(\n  payload.objective_input,\n  payload.objectiveInput,\n  body.objective_input,\n  body.objectiveInput\n) ?? {};\n\n// Business goal (Step 2 sub-step 1)\nconst business_goal = pick(\n  objective_input.business_goal,\n  objective_input.businessGoal,\n  payload.business_goal,\n  payload.businessGoal,\n  payload.identify_merged?.business_goal,\n  body.business_goal\n) ?? {};\n\n// SEO baseline (Step 2 sub-step 2 - auto-prefill from diagnosis)\nconst seo_baseline = pick(\n  objective_input.seo_baseline,\n  objective_input.seoBaseline,\n  payload.seo_baseline,\n  payload.seoBaseline,\n  payload.identify_merged?.seo_baseline,\n  body.seo_baseline\n) ?? {};\n\n// Constraints (Step 2 sub-step 3)\nconst constraints = pick(\n  objective_input.constraints,\n  payload.constraints,\n  payload.identify_merged?.constraints,\n  body.constraints\n) ?? {};\n\n// Diagnosis result from Step 1 (for context)\nconst diagnosis_result = pick(\n  objective_input.diagnosis_result,\n  objective_input.diagnosisResult,\n  payload.diagnosis_result,\n  payload.diagnosisResult,\n  body.diagnosis_result\n) ?? {};\n\nreturn [{\n  json: {\n    job_id,\n    project_id,\n    user_id,\n    objective_id,\n    diagnosis_id,\n    input_id,\n    objective_input,\n    business_goal,\n    seo_baseline,\n    constraints,\n    diagnosis_result,\n    action: pick(body.action, payload.action) ?? 'define_objective'\n  }\n}];"
       },
-      "id": "normalize-payload",
+      "id": "b0263745-e880-489b-8930-14688ded758b",
       "name": "Normalize Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        560,
-        300
+        144,
+        352
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst rawBody = JSON.stringify(input.body ?? input.payload ?? input);\n\nconst expected = await (async () => {\n  const encoder = new TextEncoder();\n  const secret = $env.N8N_WEBHOOK_SECRET;\n  const key = await globalThis.crypto.subtle.importKey(\n    'raw',\n    encoder.encode(secret),\n    { name: 'HMAC', hash: 'SHA-256' },\n    false,\n    ['sign']\n  );\n  const signatureBuffer = await globalThis.crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));\n  return Array.from(new Uint8Array(signatureBuffer))\n    .map((byte) => byte.toString(16).padStart(2, '0'))\n    .join('');\n})();\n\nif (expected !== input.app_signature) {\n  throw new Error('Invalid app signature');\n}\n\nreturn [{\n  json: {\n    ...input,\n    verified: true\n  }\n}];"
+        "jsCode": "// DEV MODE: skip HMAC verification\nconst input = $input.first().json;\nreturn [{ json: { ...input, verified: true } }];"
       },
-      "id": "verify-hmac",
-      "name": "Verify HMAC",
+      "id": "e4bfd169-27b8-4bf3-a14a-1d9a006a9b9f",
+      "name": "Verify HMAC (DEV)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        800,
-        120
+        368,
+        352
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ JSON.stringify({ job_id: $json.job_id, project_id: $json.project_id, user_id: $json.user_id, diagnosis_id: $json.diagnosis_id, objective_id: $json.objective_id, diagnosis_result: $json.diagnosis_result, objective_input: $json.objective_input }, null, 2) }}",
+        "text": "={{ JSON.stringify({\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  diagnosis_context: {\n    primary_problem_type: $json.diagnosis_result?.primary_problem_type,\n    severity: $json.diagnosis_result?.severity,\n    diagnosis_summary: $json.diagnosis_result?.diagnosis_summary,\n    objective_direction: $json.diagnosis_result?.objective_direction\n  },\n  business_goal: $json.business_goal,\n  seo_baseline: $json.seo_baseline,\n  constraints: $json.constraints,\n  achievability_hint: $json.achievability\n}, null, 2) }}",
         "options": {
-          "systemMessage": "You are the SEO Agent Objective workflow. Your only job is to define the objective after a diagnosis is already known. Do not re-identify the problem, do not re-run diagnosis logic, and do not mix in Identify workflow logic. Return ONLY valid JSON. Do not wrap the answer in markdown or prose. The JSON must contain these keys: objective_type, smart_objective, business_goal_alignment, input_metrics, output_metrics, outcome_metrics, baseline, target, time_period, achievability_score, achievability_percent, risk_notes, reasoning, next_step, raw_llm_output, model_used. Use a concise objective_type such as mixed, traffic, conversion, authority, content, or technical. Keep target and baseline consistent with the provided diagnosis and objective_input. Keep the output strictly about objective definition and planning."
-        },
-        "alwaysOutputData": true
+          "systemMessage": "You are an SEO strategy agent. Your ONLY job is to generate a SMART objective based on the diagnosis result, business goal, SEO baseline, and constraints. Do not re-diagnose, do not plan campaign execution.\n\nReturn ONLY valid JSON (no markdown fences, no prose).\n\nREQUIRED JSON SCHEMA:\n{\n  \"objective_type\": \"<enum>\",\n  \"smart_objective\": \"<1-2 sentences - SMART formula>\",\n  \"business_goal_alignment\": \"<1 sentence how this supports business goal>\",\n  \"input_metrics\": [\"<action 1>\", \"<action 2>\"],\n  \"output_metrics\": [\"<metric 1 with baseline→target>\", \"<metric 2 with baseline→target>\"],\n  \"outcome_metrics\": [\"<business outcome 1 with numbers>\"],\n  \"baseline\": {\"<key>\": <number>},\n  \"target\": {\"<key>\": <number>},\n  \"time_period\": \"<duration>\",\n  \"achievability_score\": \"<enum>\",\n  \"achievability_percent\": <number 0-100>,\n  \"risk_notes\": [\"<risk 1>\", \"<risk 2>\"],\n  \"raw_llm_output\": {\"reasoning\": \"<text>\"},\n  \"model_used\": \"gpt-4o-mini\"\n}\n\nENUMS (STRICT):\n- objective_type: technical_recovery | qualified_traffic | authority_growth | conversion_improvement | foundation_building | mixed\n- achievability_score: low | moderate | high\n\nOBJECTIVE TYPE MAPPING FROM DIAGNOSIS:\n- diagnosis.primary_problem_type=technical_bottleneck → objective_type=technical_recovery\n- diagnosis.primary_problem_type=relevance_gap → objective_type=qualified_traffic\n- diagnosis.primary_problem_type=authority_deficit → objective_type=authority_growth\n- diagnosis.primary_problem_type=conversion_pitfall → objective_type=conversion_improvement\n- diagnosis.primary_problem_type=from_scratch → objective_type=foundation_building\n- diagnosis.primary_problem_type=mixed → objective_type=mixed\n\nSMART FORMULA REQUIREMENTS:\n- Specific: concrete action (e.g., 'Increase domain authority from 22 to 30')\n- Measurable: quantifiable metric (DR, traffic, leads, conversions)\n- Achievable: must align with achievability_hint provided\n- Relevant: ties to business_goal.main_business_goal\n- Time-bound: explicit duration matching constraints.campaign_duration\n\nBASELINE vs TARGET:\n- Use real numbers from seo_baseline (current state)\n- Target should be REALISTIC based on achievability_hint:\n  • high (>70): aggressive +50-100% growth\n  • moderate (50-70): moderate +20-50% growth\n  • low (<50): conservative +10-20% growth\n- DA growth ceiling: max +8-12 points per 6 months\n- Backlinks: realistic per link_building_capacity\n\nMETRICS 3-TIER:\n- input_metrics: WHAT TEAM DOES (e.g., 'Publish 8 SEO articles per month')\n- output_metrics: SEO MOVEMENTS with numbers (e.g., 'Indexed keywords: 12 → 80')\n- outcome_metrics: BUSINESS IMPACT (e.g., 'Organic leads: 20/mo → 50/mo')\n\nRISK NOTES:\n- 2-4 specific risks given the constraints\n- Address: timing, dependencies, capacity gaps, market factors\n\nUse achievability_hint.percent provided to calibrate target ambition. DO NOT overpromise."
+        }
       },
-      "id": "ai-agent",
+      "id": "e8e41e65-19a4-4a3f-ac13-b433885178f0",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2,
       "position": [
-        1040,
-        300
+        816,
+        352
       ]
     },
     {
@@ -67,186 +67,314 @@
           "value": "gpt-4o-mini",
           "mode": "list"
         },
-        "options": {}
+        "options": {
+          "temperature": 0.3
+        }
       },
-      "id": "openai-chat-model",
+      "id": "1246f0b0-b9cf-4d3c-b795-664b100ea352",
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1040,
-        520
-      ]
+        832,
+        576
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "SRBhnfMo78voIaCm",
+          "name": "buat prject"
+        }
+      }
     },
     {
       "parameters": {
-        "description": "Use this tool to inspect the objective brief and return a compact planning checklist.",
-        "jsCode": "const raw = typeof query === 'string' ? query : JSON.stringify(query ?? {});\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch {\n  parsed = { raw };\n}\n\nreturn JSON.stringify({\n  reminder: 'Make the SMART objective specific, measurable, realistic, and linked to the diagnosis.',\n  time_period: parsed.business_goal?.target_period ?? null,\n  traffic_target: parsed.seo_baseline?.monthly_organic_traffic ?? null,\n  constraint_notes: parsed.constraints ?? {}\n});"
+        "description": "Provides context-aware SEO strategy hints based on diagnosis + constraints.",
+        "jsCode": "const raw = typeof query === 'string' ? query : JSON.stringify(query ?? {});\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch { parsed = { raw }; }\n\nconst diagnosis = parsed.diagnosis_context ?? {};\nconst baseline = parsed.seo_baseline ?? {};\nconst constraints = parsed.constraints ?? {};\nconst achievability = parsed.achievability_hint ?? {};\n\n// Strategy hints per problem type\nconst strategyHints = {\n  technical_bottleneck: 'Focus on fixing crawl/index issues first. Targets: indexed_pages, crawl_errors reduction, CWV.',\n  relevance_gap: 'Expand content for commercial keywords. Targets: ranking_keywords count, impressions, qualified_traffic.',\n  authority_deficit: 'Build backlinks + digital PR + thought leadership. Targets: DR growth (realistic +8-12 in 6mo), referring_domains.',\n  conversion_pitfall: 'Optimize CR via landing pages, CTAs, content quality. Targets: conversion_rate, bounce reduction, session duration.',\n  from_scratch: 'Build foundations: GA4/GSC setup, keyword research, content creation, technical SEO. Targets: indexed_pages, initial rankings.',\n  mixed: 'Phased approach: tackle most blocking issue first, then layer additional improvements.'\n};\n\nreturn JSON.stringify({\n  strategy_hint: strategyHints[diagnosis.primary_problem_type] ?? 'General SEO improvement focus.',\n  achievability_calibrated: {\n    percent: achievability.percent ?? 50,\n    growth_ceiling: achievability.percent >= 70 ? 'aggressive' : achievability.percent >= 50 ? 'moderate' : 'conservative'\n  },\n  baseline_summary: {\n    has_organic_traffic: (baseline.current_monthly_organic_traffic ?? 0) > 0,\n    has_rankings: (baseline.current_ranking_keywords ?? 0) > 0,\n    has_conversions: (baseline.current_organic_conversions ?? 0) > 0,\n    domain_authority: baseline.domain_authority ?? null\n  },\n  capacity: {\n    content_per_month: constraints.content_capacity_per_month ?? null,\n    duration: constraints.campaign_duration ?? null,\n    competition: constraints.industry_competition_level ?? null\n  }\n});"
       },
-      "id": "seo-code-tool",
-      "name": "SEO Context Tool",
+      "id": "07887814-1b1a-4585-9403-5f07c5bc3a14",
+      "name": "Strategy Context Tool",
       "type": "@n8n/n8n-nodes-langchain.toolCode",
       "typeVersion": 1.3,
       "position": [
-        1260,
-        520
+        960,
+        576
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst rawOutput = input.output ?? input.text ?? input.response ?? input.result ?? input;\n\nlet parsed = rawOutput;\nif (typeof rawOutput === 'string') {\n  try {\n    parsed = JSON.parse(rawOutput);\n  } catch {\n    parsed = null;\n  }\n}\n\nif (!parsed || typeof parsed !== 'object') {\n  parsed = {\n    objective_type: 'mixed',\n    smart_objective: typeof rawOutput === 'string' ? rawOutput : 'AI output could not be parsed.',\n    business_goal_alignment: 'Review the AI output and rerun the workflow.',\n    input_metrics: input.objective_input ?? {},\n    output_metrics: {},\n    outcome_metrics: {},\n    baseline: input.objective_input?.seo_baseline ?? {},\n    target: {},\n    time_period: input.objective_input?.business_goal?.target_period ?? null,\n    achievability_score: 'unknown',\n    achievability_percent: 0,\n    risk_notes: ['AI output was not valid JSON'],\n    reasoning: 'The AI response was not valid JSON.',\n    next_step: 'Inspect the AI Agent output and regenerate the objective.',\n    raw_llm_output: rawOutput,\n    model_used: 'n8n-ai-agent'\n  };\n}\n\nreturn [{\n  json: {\n    ...input,\n    objective_result: parsed\n  }\n}];"
+        "jsCode": "// Extract flow data from before AI Agent (because AI Agent overwrites json)\nconst flow = $('Calculate Achievability1').first().json;\nconst aiOutput = $input.first().json;\n\nlet raw = aiOutput.output ?? aiOutput.text ?? aiOutput.response ?? aiOutput.result ?? aiOutput;\nlet parsed = raw;\n\nif (typeof raw === 'string') {\n  const cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();\n  try { parsed = JSON.parse(cleaned); } catch { parsed = null; }\n}\n\nconst VALID_OBJ_TYPES = ['technical_recovery', 'qualified_traffic', 'authority_growth', 'conversion_improvement', 'foundation_building', 'mixed'];\nconst VALID_ACHIEVE = ['low', 'moderate', 'high'];\n\nif (!parsed || typeof parsed !== 'object') {\n  parsed = {\n    objective_type: 'mixed',\n    smart_objective: 'Objective could not be generated. Please retry.',\n    business_goal_alignment: '',\n    input_metrics: [],\n    output_metrics: [],\n    outcome_metrics: [],\n    baseline: {},\n    target: {},\n    time_period: flow.constraints?.campaign_duration ?? '6 months',\n    achievability_score: flow.achievability?.score ?? 'moderate',\n    achievability_percent: flow.achievability?.percent ?? 50,\n    risk_notes: ['AI output was not valid JSON'],\n    raw_llm_output: { text: String(raw).slice(0, 2000) },\n    model_used: 'gpt-4o-mini'\n  };\n} else {\n  // Enforce enums\n  if (!VALID_OBJ_TYPES.includes(parsed.objective_type)) {\n    // Auto-map from diagnosis if missing\n    const mapping = {\n      technical_bottleneck: 'technical_recovery',\n      relevance_gap: 'qualified_traffic',\n      authority_deficit: 'authority_growth',\n      conversion_pitfall: 'conversion_improvement',\n      from_scratch: 'foundation_building',\n      mixed: 'mixed'\n    };\n    parsed.objective_type = mapping[flow.diagnosis_result?.primary_problem_type] ?? 'mixed';\n  }\n  if (!VALID_ACHIEVE.includes(parsed.achievability_score)) {\n    parsed.achievability_score = flow.achievability?.score ?? 'moderate';\n  }\n  if (typeof parsed.achievability_percent !== 'number' || parsed.achievability_percent < 0 || parsed.achievability_percent > 100) {\n    parsed.achievability_percent = flow.achievability?.percent ?? 50;\n  }\n  if (!Array.isArray(parsed.input_metrics)) parsed.input_metrics = [];\n  if (!Array.isArray(parsed.output_metrics)) parsed.output_metrics = [];\n  if (!Array.isArray(parsed.outcome_metrics)) parsed.outcome_metrics = [];\n  if (!Array.isArray(parsed.risk_notes)) parsed.risk_notes = [];\n  if (!parsed.baseline || typeof parsed.baseline !== 'object') parsed.baseline = {};\n  if (!parsed.target || typeof parsed.target !== 'object') parsed.target = {};\n  if (!parsed.smart_objective) parsed.smart_objective = '';\n  if (!parsed.business_goal_alignment) parsed.business_goal_alignment = '';\n  if (!parsed.time_period) parsed.time_period = flow.constraints?.campaign_duration ?? '6 months';\n  if (!parsed.raw_llm_output) parsed.raw_llm_output = {};\n  if (!parsed.model_used) parsed.model_used = 'gpt-4o-mini';\n}\n\nconst now = new Date().toISOString();\n\nreturn [{\n  json: {\n    job_id: flow.job_id,\n    project_id: flow.project_id,\n    user_id: flow.user_id,\n    objective_id: flow.objective_id,\n    diagnosis_id: flow.diagnosis_id,\n    input_id: flow.input_id,\n    completed_at: now,\n    // Flattened fields for Supabase update\n    objective_type: parsed.objective_type,\n    smart_objective: parsed.smart_objective,\n    business_goal_alignment: parsed.business_goal_alignment,\n    input_metrics: parsed.input_metrics,\n    output_metrics: parsed.output_metrics,\n    outcome_metrics: parsed.outcome_metrics,\n    baseline: parsed.baseline,\n    target: parsed.target,\n    time_period: parsed.time_period,\n    achievability_score: parsed.achievability_score,\n    achievability_percent: parsed.achievability_percent,\n    risk_notes: parsed.risk_notes,\n    raw_llm_output: parsed.raw_llm_output,\n    model_used: parsed.model_used,\n    // Full result for response_payload in jobs table\n    objective_result: parsed\n  }\n}];"
       },
-      "id": "normalize-ai-result",
+      "id": "1564bb12-cec1-42ab-9fab-50fdcf672eae",
       "name": "Normalize Objective Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
-        300
+        1168,
+        352
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst objectiveResult = input.objective_result ?? {};\nconst now = new Date().toISOString();\n\nconst supabaseObjectivePayload = {\n  objective_type: objectiveResult.objective_type,\n  smart_objective: objectiveResult.smart_objective,\n  business_goal_alignment: objectiveResult.business_goal_alignment ?? null,\n  input_metrics: objectiveResult.input_metrics ?? {},\n  output_metrics: objectiveResult.output_metrics ?? {},\n  outcome_metrics: objectiveResult.outcome_metrics ?? {},\n  baseline: objectiveResult.baseline ?? {},\n  target: objectiveResult.target ?? {},\n  time_period: objectiveResult.time_period ?? null,\n  achievability_score: objectiveResult.achievability_score ?? null,\n  achievability_percent: objectiveResult.achievability_percent ?? null,\n  risk_notes: objectiveResult.risk_notes ?? [],\n  reasoning: objectiveResult.reasoning ?? null,\n  next_step: objectiveResult.next_step ?? null,\n  raw_llm_output: objectiveResult.raw_llm_output ?? {},\n  model_used: objectiveResult.model_used,\n  status: 'completed',\n  completed_at: now\n};\n\nconst supabaseJobPayload = {\n  status: 'completed',\n  response_payload: objectiveResult,\n  completed_at: now\n};\n\nconst supabaseUsageEventPayload = {\n  user_id: input.user_id,\n  event_type: 'objective_generated',\n  metadata: {\n    jobId: input.job_id,\n    projectId: input.project_id,\n    objectiveId: input.objective_id,\n    source: 'n8n-objective-workflow'\n  }\n};\n\nreturn [{\n  json: {\n    ...input,\n    supabase_objective_payload: supabaseObjectivePayload,\n    supabase_job_payload: supabaseJobPayload,\n    supabase_usage_event_payload: supabaseUsageEventPayload\n  }\n}];"
+        "operation": "update",
+        "tableId": "seo_objectives",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.objective_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "objective_type",
+              "fieldValue": "={{ $json.objective_type }}"
+            },
+            {
+              "fieldId": "smart_objective",
+              "fieldValue": "={{ $json.smart_objective }}"
+            },
+            {
+              "fieldId": "business_goal_alignment",
+              "fieldValue": "={{ $json.business_goal_alignment }}"
+            },
+            {
+              "fieldId": "input_metrics",
+              "fieldValue": "={{ $json.input_metrics }}"
+            },
+            {
+              "fieldId": "output_metrics",
+              "fieldValue": "={{ $json.output_metrics }}"
+            },
+            {
+              "fieldId": "outcome_metrics",
+              "fieldValue": "={{ $json.outcome_metrics }}"
+            },
+            {
+              "fieldId": "baseline",
+              "fieldValue": "={{ $json.baseline }}"
+            },
+            {
+              "fieldId": "target",
+              "fieldValue": "={{ $json.target }}"
+            },
+            {
+              "fieldId": "time_period",
+              "fieldValue": "={{ $json.time_period }}"
+            },
+            {
+              "fieldId": "achievability_score",
+              "fieldValue": "={{ $json.achievability_score }}"
+            },
+            {
+              "fieldId": "achievability_percent",
+              "fieldValue": "={{ $json.achievability_percent }}"
+            },
+            {
+              "fieldId": "risk_notes",
+              "fieldValue": "={{ $json.risk_notes }}"
+            },
+            {
+              "fieldId": "raw_llm_output",
+              "fieldValue": "={{ $json.raw_llm_output }}"
+            },
+            {
+              "fieldId": "model_used",
+              "fieldValue": "={{ $json.model_used }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $json.completed_at }}"
+            }
+          ]
+        }
       },
-      "id": "prepare-supabase-payload",
-      "name": "Prepare Supabase Payload",
+      "id": "f84d05a7-67ea-4092-8871-2a8e7ed19f19",
+      "name": "Update seo_objectives",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "jobs",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Objective Result').first().json.job_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "response_payload",
+              "fieldValue": "={{ $('Normalize Objective Result').first().json.objective_result }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $('Normalize Objective Result').first().json.completed_at }}"
+            }
+          ]
+        }
+      },
+      "id": "88ef6e46-fecc-401a-8176-d1bee20a90dd",
+      "name": "Update jobs",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "campaign_progress",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Objective Result').first().json.project_id }}"
+            },
+            {
+              "keyName": "step_number",
+              "condition": "eq",
+              "keyValue": "2"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $('Normalize Objective Result').first().json.completed_at }}"
+            }
+          ]
+        }
+      },
+      "id": "d3eed5d4-d311-486f-acd5-bc3617b330eb",
+      "name": "Mark Step 2 Complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "campaign_progress",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Objective Result').first().json.project_id }}"
+            },
+            {
+              "keyName": "step_number",
+              "condition": "eq",
+              "keyValue": "3"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "not_started"
+            }
+          ]
+        }
+      },
+      "id": "53761f58-e96d-4dc3-ae03-e38539fd1f6d",
+      "name": "Unlock Step 3",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        352
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rule-based Achievability Calculation\n// Combines 6 factors into a single 0-100 percentage\n\nconst input = $input.first().json;\nconst constraints = input.constraints ?? {};\nconst baseline = input.seo_baseline ?? {};\nconst diagnosis = input.diagnosis_result ?? {};\n\n// Helper: map level to score\nconst levelScore = (level, map) => map[level] ?? 50;\n\n// 1. Budget capacity (0-100)\nconst budget_score = levelScore(constraints.budget_level, {\n  low: 30, medium: 60, high: 90\n});\n\n// 2. Content capacity per month (0-100)\nconst contentCount = constraints.content_capacity_per_month ?? 4;\nconst content_score = Math.min(100, contentCount * 10);  // 10 articles/mo = max\n\n// 3. Developer support (binary 0 or 100)\nconst dev_score = constraints.developer_support_available ? 90 : 40;\n\n// 4. Link building capacity (0-100)\nconst link_score = levelScore(constraints.link_building_capacity, {\n  low: 30, medium: 60, high: 90\n});\n\n// 5. Competition level (inverse - higher competition = harder)\nconst competition_score = levelScore(constraints.industry_competition_level, {\n  low: 90, medium: 60, high: 30\n});\n\n// 6. Existing brand strength (0-100)\nconst brand_score = levelScore(constraints.existing_brand_strength, {\n  none: 20, low: 40, medium: 65, high: 90\n});\n\n// Severity adjustment from diagnosis (lower severity = higher achievability)\nconst severityAdjust = {\n  low: 10, medium: 0, high: -10, critical: -20\n};\nconst severity_bonus = severityAdjust[diagnosis.severity] ?? 0;\n\n// Combined weighted average\nconst weighted_score = Math.round(\n  (budget_score * 0.2 +\n   content_score * 0.2 +\n   dev_score * 0.1 +\n   link_score * 0.15 +\n   competition_score * 0.2 +\n   brand_score * 0.15) + severity_bonus\n);\n\nconst achievability_percent = Math.max(0, Math.min(100, weighted_score));\n\n// Map to enum\nlet achievability_score;\nif (achievability_percent < 50) achievability_score = 'low';\nelse if (achievability_percent <= 70) achievability_score = 'moderate';\nelse achievability_score = 'high';\n\nreturn [{\n  json: {\n    ...input,\n    achievability: {\n      percent: achievability_percent,\n      score: achievability_score,\n      breakdown: {\n        budget: budget_score,\n        content_capacity: content_score,\n        developer_support: dev_score,\n        link_building: link_score,\n        competition: competition_score,\n        brand_strength: brand_score,\n        severity_bonus\n      }\n    }\n  }\n}];"
+      },
+      "id": "5152b22e-2b68-4680-8782-8a5c2ad053e0",
+      "name": "Calculate Achievability1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/seo_objectives?id=eq.{{$json.objective_id}}",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_objective_payload }}"
-      },
-      "id": "update-objective-supabase",
-      "name": "Update Objective in Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        1800,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/jobs?id=eq.{{$json.job_id}}",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_job_payload }}"
-      },
-      "id": "update-job-supabase",
-      "name": "Update Job in Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        2040,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/usage_events",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_usage_event_payload }}"
-      },
-      "id": "insert-usage-event",
-      "name": "Insert Usage Event",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        2280,
-        300
+        592,
+        352
       ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\n  ok: true,\n  stored: true,\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  objective_id: $json.objective_id\n} }}",
+        "responseBody": "={{ {\n  ok: true,\n  received: true,\n  job_id: $('Normalize Objective Result').first().json.job_id,\n  project_id: $('Normalize Objective Result').first().json.project_id,\n  objective_id: $('Normalize Objective Result').first().json.objective_id,\n  diagnosis_id: $('Normalize Objective Result').first().json.diagnosis_id,\n  status: 'completed'\n} }}",
         "options": {
           "responseCode": 200
         }
       },
-      "id": "respond-ok",
-      "name": "Respond OK",
+      "id": "32bf9f3e-7787-4ee2-96f1-569245ea68a6",
+      "name": "Respond OK1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2520,
-        300
+        2288,
+        352
       ]
     }
   ],
@@ -266,18 +394,29 @@
       "main": [
         [
           {
-            "node": "Verify HMAC",
+            "node": "Verify HMAC (DEV)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify HMAC": {
+    "Verify HMAC (DEV)": {
       "main": [
         [
           {
-            "node": "AI Agent",
+            "node": "Calculate Achievability1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Objective Result",
             "type": "main",
             "index": 0
           }
@@ -295,7 +434,7 @@
         ]
       ]
     },
-    "SEO Context Tool": {
+    "Strategy Context Tool": {
       "ai_tool": [
         [
           {
@@ -306,66 +445,66 @@
         ]
       ]
     },
-    "AI Agent": {
-      "main": [
-        [
-          {
-            "node": "Normalize Objective Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Normalize Objective Result": {
       "main": [
         [
           {
-            "node": "Prepare Supabase Payload",
+            "node": "Update seo_objectives",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Supabase Payload": {
+    "Update seo_objectives": {
       "main": [
         [
           {
-            "node": "Update Objective in Supabase",
+            "node": "Update jobs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Objective in Supabase": {
+    "Update jobs": {
       "main": [
         [
           {
-            "node": "Update Job in Supabase",
+            "node": "Mark Step 2 Complete",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Job in Supabase": {
+    "Mark Step 2 Complete": {
       "main": [
         [
           {
-            "node": "Insert Usage Event",
+            "node": "Unlock Step 3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Usage Event": {
+    "Unlock Step 3": {
       "main": [
         [
           {
-            "node": "Respond OK",
+            "node": "Respond OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Achievability1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
@@ -373,9 +512,8 @@
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "2"
+  "pinData": {},
+  "meta": {
+    "instanceId": "9aae001b7930db2be15063a3d92516c97eac6c98f38154362ce95b1f0b8540ac"
+  }
 }

@@ -1,63 +1,63 @@
 {
-  "name": "SEO Agent - Identify Problem",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "seo-agent/identify-problem",
-        "responseMode": "responseNode"
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "identify-webhook",
-      "name": "Webhook Trigger",
+      "id": "7e15e6a5-23cb-4706-af23-5c67d09ee30c",
+      "name": "Webhook Trigger1",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        320,
-        300
-      ]
+        432,
+        1008
+      ],
+      "webhookId": "7c4d42dc-8ec2-4bff-b0f9-f1cfacfd1fdb"
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst payload = input.body ?? input.payload ?? input;\nconst appSignature = input.headers?.['x-app-signature'] ?? null;\n\nreturn [{\n  json: {\n    ...input,\n    payload,\n    app_signature: appSignature,\n    job_id: input.job_id ?? payload.job_id ?? payload?.job?.id,\n    project_id: input.project_id ?? payload.project_id ?? payload?.project?.id,\n    user_id: input.user_id ?? payload.user_id ?? payload?.user?.id,\n    diagnosis_id: input.diagnosis_id ?? payload.diagnosis_id ?? payload?.diagnosis?.id,\n    identify_drafts: input.identify_drafts ?? payload.identify_drafts ?? payload?.identify?.drafts ?? [],\n    identify_merged: input.identify_merged ?? payload.identify_merged ?? payload?.identify?.merged ?? {}\n  }\n}];"
+        "jsCode": "// Extract & normalize payload from any BE format (camelCase OR snake_case)\nconst raw = $input.first().json;\nconst body = raw.body ?? raw;\n\nconst pick = (...vals) => vals.find(v => v !== undefined && v !== null && v !== '') ?? null;\n\nconst identify_merged = pick(\n  body.identify_merged,\n  body.identifyMerged,\n  body.payload?.identify_merged,\n  body.payload?.identifyMerged,\n  body.payload?.identify?.merged,\n  body.identify?.merged\n) ?? {};\n\nconst identify_drafts = pick(\n  body.identify_drafts,\n  body.identifyDrafts,\n  body.payload?.identify_drafts,\n  body.payload?.identifyDrafts,\n  body.payload?.identify?.drafts,\n  body.identify?.drafts\n) ?? [];\n\nconst job_id = pick(\n  body.job_id, body.jobId,\n  body.payload?.job_id, body.payload?.jobId,\n  body.payload?.job?.id\n);\n\nconst project_id = pick(\n  body.project_id, body.projectId,\n  body.payload?.project_id, body.payload?.projectId,\n  body.payload?.project?.id\n);\n\nconst user_id = pick(\n  body.user_id, body.userId,\n  body.payload?.user_id, body.payload?.userId,\n  body.payload?.user?.id\n);\n\nconst diagnosis_id = pick(\n  body.diagnosis_id, body.diagnosisId,\n  body.payload?.diagnosis_id, body.payload?.diagnosisId,\n  body.payload?.diagnosis?.id\n);\n\nif (!job_id || !project_id || !diagnosis_id) {\n  throw new Error(`Missing required IDs. job_id=${job_id}, project_id=${project_id}, diagnosis_id=${diagnosis_id}`);\n}\n\nreturn [{\n  json: {\n    job_id,\n    project_id,\n    user_id,\n    diagnosis_id,\n    identify_drafts,\n    identify_merged,\n    action: pick(body.action, body.payload?.action) ?? 'identify_problem'\n  }\n}];"
       },
-      "id": "normalize-payload",
+      "id": "4676c43d-a43f-4727-96e0-62aa9581eb1a",
       "name": "Normalize Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        560,
-        300
+        656,
+        1008
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst rawBody = JSON.stringify(input.body ?? input.payload ?? input);\n\nconst expected = await (async () => {\n  const encoder = new TextEncoder();\n  const secret = $env.N8N_WEBHOOK_SECRET;\n  const key = await globalThis.crypto.subtle.importKey(\n    'raw',\n    encoder.encode(secret),\n    { name: 'HMAC', hash: 'SHA-256' },\n    false,\n    ['sign']\n  );\n  const signatureBuffer = await globalThis.crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));\n  return Array.from(new Uint8Array(signatureBuffer))\n    .map((byte) => byte.toString(16).padStart(2, '0'))\n    .join('');\n})();\n\nif (expected !== input.app_signature) {\n  throw new Error('Invalid app signature');\n}\n\nreturn [{\n  json: {\n    ...input,\n    verified: true\n  }\n}];"
+        "jsCode": "// DEV MODE: skip HMAC verification\nconst input = $input.first().json;\nreturn [{ json: { ...input, verified: true } }];"
       },
-      "id": "verify-hmac",
-      "name": "Verify HMAC",
+      "id": "1b295c11-6fe0-4452-b468-cedabdc037b8",
+      "name": "Verify HMAC (DEV)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        800,
-        120
+        880,
+        1008
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ JSON.stringify({ job_id: $json.job_id, project_id: $json.project_id, user_id: $json.user_id, diagnosis_id: $json.diagnosis_id, identify_drafts: $json.identify_drafts, identify_merged: $json.identify_merged }, null, 2) }}",
+        "text": "={{ JSON.stringify({\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  brief: $json.identify_merged\n}, null, 2) }}",
         "options": {
-          "systemMessage": "You are the SEO Agent Identify workflow. Your only job is to identify the problem in the current website brief. Do not write an objective, do not plan execution, and do not mix in Objective workflow logic. Return ONLY valid JSON. Do not wrap the answer in markdown or prose. The JSON must contain these keys: primary_problem_type, secondary_problem_type, severity, confidence_score, diagnosis_summary, root_cause, evidence, business_impact, campaign_readiness, recommended_next_step, objective_direction, not_recommended_actions, warnings, raw_llm_output, model_used. Use one of these primary_problem_type values: qualified_traffic, technical, authority, content, mixed, unknown. Use one of these severity values: low, medium, high, critical. Keep evidence as an array of objects with label and value. Keep business_impact as an object with summary and metrics. Keep the output strictly about identification and diagnosis."
-        },
-        "alwaysOutputData": true
+          "systemMessage": "You are an SEO diagnostic agent. Your ONLY job is to identify the primary SEO problem from the website brief. Do not write objectives, plans, or campaigns.\n\nReturn ONLY valid JSON (no markdown fences, no prose).\n\nREQUIRED JSON SCHEMA:\n{\n  \"primary_problem_type\": \"<enum>\",\n  \"secondary_problem_type\": \"<enum or null>\",\n  \"severity\": \"<enum>\",\n  \"confidence_score\": <number 0-100>,\n  \"diagnosis_summary\": \"<1 sentence>\",\n  \"root_cause\": \"<2-3 sentences>\",\n  \"evidence\": [{\"label\": \"<noun>\", \"value\": \"<with units>\", \"icon_hint\": \"<icon>\", \"source\": \"<source>\"}],\n  \"business_impact\": {\"summary\": \"<text>\", \"metrics\": [{\"label\": \"<metric>\", \"value\": \"<with units>\", \"direction\": \"<dir>\"}]},\n  \"campaign_readiness\": \"<enum>\",\n  \"recommended_next_step\": \"<action>\",\n  \"objective_direction\": \"<enum>\",\n  \"not_recommended_actions\": [\"<action>\"],\n  \"warnings\": [\"<warning>\"],\n  \"raw_llm_output\": {\"reasoning\": \"<text>\"},\n  \"model_used\": \"gpt-4o-mini\"\n}\n\nENUMS:\n- primary_problem_type / secondary_problem_type: technical_bottleneck | relevance_gap | authority_deficit | conversion_pitfall | from_scratch | mixed\n- severity: low | medium | high | critical\n- campaign_readiness: ready | not_ready | partially_ready\n- objective_direction: technical_recovery | qualified_traffic | authority_growth | conversion_improvement | foundation_building | mixed\n- icon_hint: search | chart | speed | content | backlink | conversion | target\n- source: gsc | ga4 | ahrefs | user_input | inferred\n- direction: negative | positive | neutral\n\nCLASSIFICATION:\n- technical_bottleneck: indexed/published < 30% OR multiple errors\n- relevance_gap: indexed >= 30% BUT ranking brand-only / target_keywords >> ranking_keywords\n- authority_deficit: DR gap > 15 AND content OK\n- conversion_pitfall: traffic > 500 AND CR < 1% AND bounce > 70\n- from_scratch: indexed=0 AND published=0\n- mixed: 2+ categories strong simultaneously\n\nEvidence: 3-6 items with CONCRETE NUMBERS. Business impact: 2-3 metrics with units. Warnings: flag missing data."
+        }
       },
-      "id": "ai-agent",
+      "id": "ac6f841d-4bf0-4382-af17-7a1642371f65",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2,
       "position": [
-        1040,
-        300
+        1104,
+        1008
       ]
     },
     {
@@ -67,191 +67,310 @@
           "value": "gpt-4o-mini",
           "mode": "list"
         },
-        "options": {}
+        "options": {
+          "temperature": 0.3
+        }
       },
-      "id": "openai-chat-model",
+      "id": "686f6abd-c111-4df5-82d3-03bcffc3d8bf",
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1040,
-        520
-      ]
+        1120,
+        1232
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "SRBhnfMo78voIaCm",
+          "name": "buat prject"
+        }
+      }
     },
     {
       "parameters": {
-        "description": "Use this tool to inspect the normalized SEO brief and return a compact JSON checklist.",
-        "jsCode": "const raw = typeof query === 'string' ? query : JSON.stringify(query ?? {});\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch {\n  parsed = { raw };\n}\n\nreturn JSON.stringify({\n  reminder: 'Analyze intent match, crawlability, content depth, and internal links.',\n  focus: parsed.main_seo_concern ?? null,\n  trend: parsed.organic_traffic_trend ?? null,\n  stage: parsed.website_stage ?? null,\n  indexed_by_google: parsed.indexed_by_google ?? null\n});"
+        "description": "Computes derived SEO signals from the brief.",
+        "jsCode": "const raw = typeof query === 'string' ? query : JSON.stringify(query ?? {});\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch { parsed = { raw }; }\n\nconst brief = parsed.brief ?? parsed;\n\nconst indexedRatio = brief.indexed_pages != null && brief.published_pages\n  ? Math.round((brief.indexed_pages / brief.published_pages) * 100) : null;\nconst drGap = brief.competitor_dr_avg != null && brief.domain_rating != null\n  ? brief.competitor_dr_avg - brief.domain_rating : null;\nconst techIssues = [\n  brief.has_redirect_errors, brief.has_4xx_5xx_errors,\n  brief.canonical_issues, brief.noindex_issues,\n  brief.mobile_usability_issues, brief.core_web_vitals_pass === false\n].filter(Boolean).length;\nconst rankingKwCount = Array.isArray(brief.current_ranking_keywords)\n  ? brief.current_ranking_keywords.length : (brief.current_ranking_keywords ?? 0);\nconst targetKwCount = Array.isArray(brief.target_keywords) ? brief.target_keywords.length : 0;\n\nreturn JSON.stringify({\n  signals: {\n    indexed_ratio_percent: indexedRatio,\n    domain_rating_gap_vs_competitors: drGap,\n    technical_issues_count: techIssues,\n    ranking_keywords_count: rankingKwCount,\n    target_keywords_count: targetKwCount,\n    has_organic_traffic: (brief.monthly_organic_traffic ?? 0) > 0,\n    conversion_rate_low: brief.current_conversion_rate != null && brief.current_conversion_rate < 1.0,\n    bounce_rate_high: brief.bounce_rate != null && brief.bounce_rate > 70\n  },\n  stage: brief.website_stage ?? null,\n  user_concern: brief.main_seo_concern ?? null\n});"
       },
-      "id": "seo-code-tool",
-      "name": "SEO Context Tool",
+      "id": "6aab14b5-9f0c-4a18-a5bb-7382f74e7956",
+      "name": "SEO Signals Tool",
       "type": "@n8n/n8n-nodes-langchain.toolCode",
       "typeVersion": 1.3,
       "position": [
-        1260,
-        520
+        1248,
+        1232
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst rawOutput = input.output ?? input.text ?? input.response ?? input.result ?? input;\n\nlet parsed = rawOutput;\nif (typeof rawOutput === 'string') {\n  try {\n    parsed = JSON.parse(rawOutput);\n  } catch {\n    parsed = null;\n  }\n}\n\nif (!parsed || typeof parsed !== 'object') {\n  parsed = {\n    primary_problem_type: 'unknown',\n    secondary_problem_type: null,\n    severity: 'medium',\n    confidence_score: 50,\n    diagnosis_summary: typeof rawOutput === 'string' ? rawOutput : 'AI output could not be parsed.',\n    root_cause: 'The AI response was not valid JSON.',\n    evidence: [],\n    business_impact: {\n      summary: 'Review the AI output and rerun the workflow.',\n      metrics: []\n    },\n    campaign_readiness: 'needs_review',\n    recommended_next_step: 'Inspect the AI Agent output and regenerate the diagnosis.',\n    objective_direction: 'unknown',\n    not_recommended_actions: [],\n    warnings: ['AI output was not valid JSON'],\n    raw_llm_output: rawOutput,\n    model_used: 'n8n-ai-agent'\n  };\n}\n\nreturn [{\n  json: {\n    ...input,\n    diagnosis_result: parsed\n  }\n}];"
+        "jsCode": "// Extract flow data from before AI Agent (because AI Agent overwrites json)\nconst flow = $('Verify HMAC (DEV)').first().json;\nconst aiOutput = $input.first().json;\n\nlet raw = aiOutput.output ?? aiOutput.text ?? aiOutput.response ?? aiOutput.result ?? aiOutput;\nlet parsed = raw;\n\nif (typeof raw === 'string') {\n  const cleaned = raw.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '').trim();\n  try { parsed = JSON.parse(cleaned); } catch { parsed = null; }\n}\n\nconst VALID_PROBLEMS = ['technical_bottleneck', 'relevance_gap', 'authority_deficit', 'conversion_pitfall', 'from_scratch', 'mixed'];\nconst VALID_SEVERITY = ['low', 'medium', 'high', 'critical'];\nconst VALID_READINESS = ['ready', 'not_ready', 'partially_ready'];\nconst VALID_DIRECTIONS = ['technical_recovery', 'qualified_traffic', 'authority_growth', 'conversion_improvement', 'foundation_building', 'mixed'];\n\nif (!parsed || typeof parsed !== 'object') {\n  parsed = {\n    primary_problem_type: 'mixed',\n    secondary_problem_type: null,\n    severity: 'medium',\n    confidence_score: 50,\n    diagnosis_summary: 'AI output could not be parsed.',\n    root_cause: 'The AI response was not valid JSON.',\n    evidence: [],\n    business_impact: { summary: '', metrics: [] },\n    campaign_readiness: 'partially_ready',\n    recommended_next_step: 'Retry diagnosis.',\n    objective_direction: 'mixed',\n    not_recommended_actions: [],\n    warnings: ['AI output was not valid JSON'],\n    raw_llm_output: { text: String(raw).slice(0, 2000) },\n    model_used: 'gpt-4o-mini'\n  };\n} else {\n  if (!VALID_PROBLEMS.includes(parsed.primary_problem_type)) parsed.primary_problem_type = 'mixed';\n  if (parsed.secondary_problem_type !== null && !VALID_PROBLEMS.includes(parsed.secondary_problem_type)) parsed.secondary_problem_type = null;\n  if (!VALID_SEVERITY.includes(parsed.severity)) parsed.severity = 'medium';\n  if (!VALID_READINESS.includes(parsed.campaign_readiness)) parsed.campaign_readiness = 'partially_ready';\n  if (!VALID_DIRECTIONS.includes(parsed.objective_direction)) parsed.objective_direction = 'mixed';\n  if (typeof parsed.confidence_score !== 'number') parsed.confidence_score = 60;\n  if (!Array.isArray(parsed.evidence)) parsed.evidence = [];\n  if (!Array.isArray(parsed.not_recommended_actions)) parsed.not_recommended_actions = [];\n  if (!Array.isArray(parsed.warnings)) parsed.warnings = [];\n  if (!parsed.business_impact || typeof parsed.business_impact !== 'object') parsed.business_impact = { summary: '', metrics: [] };\n  if (!Array.isArray(parsed.business_impact.metrics)) parsed.business_impact.metrics = [];\n  if (!parsed.model_used) parsed.model_used = 'gpt-4o-mini';\n  if (!parsed.raw_llm_output) parsed.raw_llm_output = {};\n  if (!parsed.diagnosis_summary) parsed.diagnosis_summary = '';\n  if (!parsed.root_cause) parsed.root_cause = '';\n  if (!parsed.recommended_next_step) parsed.recommended_next_step = '';\n}\n\nconst now = new Date().toISOString();\n\nreturn [{\n  json: {\n    job_id: flow.job_id,\n    project_id: flow.project_id,\n    user_id: flow.user_id,\n    diagnosis_id: flow.diagnosis_id,\n    completed_at: now,\n    // Flattened fields for Supabase update\n    primary_problem_type: parsed.primary_problem_type,\n    secondary_problem_type: parsed.secondary_problem_type,\n    severity: parsed.severity,\n    confidence_score: parsed.confidence_score,\n    diagnosis_summary: parsed.diagnosis_summary,\n    root_cause: parsed.root_cause,\n    evidence: parsed.evidence,\n    business_impact: parsed.business_impact,\n    campaign_readiness: parsed.campaign_readiness,\n    recommended_next_step: parsed.recommended_next_step,\n    objective_direction: parsed.objective_direction,\n    not_recommended_actions: parsed.not_recommended_actions,\n    warnings: parsed.warnings,\n    raw_llm_output: parsed.raw_llm_output,\n    model_used: parsed.model_used,\n    // Full result for response_payload in jobs table\n    diagnosis_result: parsed\n  }\n}];"
       },
-      "id": "normalize-ai-result",
+      "id": "784b3fd9-22ac-4df7-a21e-73b26379dc3e",
       "name": "Normalize Diagnosis Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1320,
-        300
+        1456,
+        1008
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst diagnosisResult = input.diagnosis_result ?? {};\nconst now = new Date().toISOString();\n\nconst supabaseDiagnosisPayload = {\n  primary_problem_type: diagnosisResult.primary_problem_type,\n  secondary_problem_type: diagnosisResult.secondary_problem_type ?? null,\n  severity: diagnosisResult.severity,\n  confidence_score: diagnosisResult.confidence_score,\n  diagnosis_summary: diagnosisResult.diagnosis_summary,\n  root_cause: diagnosisResult.root_cause,\n  evidence: diagnosisResult.evidence ?? [],\n  business_impact: diagnosisResult.business_impact ?? {},\n  campaign_readiness: diagnosisResult.campaign_readiness,\n  recommended_next_step: diagnosisResult.recommended_next_step,\n  objective_direction: diagnosisResult.objective_direction,\n  not_recommended_actions: diagnosisResult.not_recommended_actions ?? [],\n  warnings: diagnosisResult.warnings ?? [],\n  raw_llm_output: diagnosisResult.raw_llm_output ?? {},\n  model_used: diagnosisResult.model_used,\n  status: 'completed',\n  completed_at: now\n};\n\nconst supabaseJobPayload = {\n  status: 'completed',\n  response_payload: diagnosisResult,\n  completed_at: now\n};\n\nconst supabaseUsageEventPayload = {\n  user_id: input.user_id,\n  event_type: 'diagnosis_run',\n  metadata: {\n    jobId: input.job_id,\n    projectId: input.project_id,\n    diagnosisId: input.diagnosis_id,\n    source: 'n8n-identify-workflow'\n  }\n};\n\nreturn [{\n  json: {\n    ...input,\n    supabase_diagnosis_payload: supabaseDiagnosisPayload,\n    supabase_job_payload: supabaseJobPayload,\n    supabase_usage_event_payload: supabaseUsageEventPayload\n  }\n}];"
-      },
-      "id": "prepare-supabase-payload",
-      "name": "Prepare Supabase Payload",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1560,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/seo_diagnoses?id=eq.{{$json.diagnosis_id}}",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
+        "operation": "update",
+        "tableId": "seo_diagnoses",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
             {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.diagnosis_id }}"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_diagnosis_payload }}"
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "primary_problem_type",
+              "fieldValue": "={{ $json.primary_problem_type }}"
+            },
+            {
+              "fieldId": "secondary_problem_type",
+              "fieldValue": "={{ $json.secondary_problem_type }}"
+            },
+            {
+              "fieldId": "severity",
+              "fieldValue": "={{ $json.severity }}"
+            },
+            {
+              "fieldId": "confidence_score",
+              "fieldValue": "={{ $json.confidence_score }}"
+            },
+            {
+              "fieldId": "diagnosis_summary",
+              "fieldValue": "={{ $json.diagnosis_summary }}"
+            },
+            {
+              "fieldId": "root_cause",
+              "fieldValue": "={{ $json.root_cause }}"
+            },
+            {
+              "fieldId": "evidence",
+              "fieldValue": "={{ JSON.stringify($json.evidence) }}"
+            },
+            {
+              "fieldId": "business_impact",
+              "fieldValue": "={{ JSON.stringify($json.business_impact) }}"
+            },
+            {
+              "fieldId": "campaign_readiness",
+              "fieldValue": "={{ $json.campaign_readiness }}"
+            },
+            {
+              "fieldId": "recommended_next_step",
+              "fieldValue": "={{ $json.recommended_next_step }}"
+            },
+            {
+              "fieldId": "objective_direction",
+              "fieldValue": "={{ $json.objective_direction }}"
+            },
+            {
+              "fieldId": "not_recommended_actions",
+              "fieldValue": "={{ JSON.stringify($json.not_recommended_actions) }}"
+            },
+            {
+              "fieldId": "warnings",
+              "fieldValue": "={{ JSON.stringify($json.warnings) }}"
+            },
+            {
+              "fieldId": "raw_llm_output",
+              "fieldValue": "={{ JSON.stringify($json.raw_llm_output) }}"
+            },
+            {
+              "fieldId": "model_used",
+              "fieldValue": "={{ $json.model_used }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $json.completed_at }}"
+            }
+          ]
+        }
       },
-      "id": "update-diagnosis-supabase",
-      "name": "Update Diagnosis in Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
+      "id": "e4a610ed-e9f7-46ed-a0f8-ebf3bbfc1a22",
+      "name": "Update seo_diagnoses",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
-        1800,
-        300
-      ]
+        1680,
+        1008
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "PATCH",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/jobs?id=eq.{{$json.job_id}}",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
+        "operation": "update",
+        "tableId": "jobs",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
             {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Diagnosis Result').first().json.job_id }}"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_job_payload }}"
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "response_payload",
+              "fieldValue": "={{ JSON.stringify($('Normalize Diagnosis Result').first().json.diagnosis_result) }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $('Normalize Diagnosis Result').first().json.completed_at }}"
+            }
+          ]
+        }
       },
-      "id": "update-job-supabase",
-      "name": "Update Job in Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
+      "id": "cc5d91d9-5957-4f0c-a0c7-772f4c2175e5",
+      "name": "Update jobs",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
-        2040,
-        300
-      ]
+        1904,
+        1008
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/usage_events",
-        "sendHeaders": true,
-        "headerParametersUi": {
-          "parameter": [
+        "operation": "update",
+        "tableId": "campaign_progress",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
             {
-              "name": "apikey",
-              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Diagnosis Result').first().json.project_id }}"
             },
             {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=representation"
+              "keyName": "step_number",
+              "condition": "eq",
+              "keyValue": "1"
             }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.supabase_usage_event_payload }}"
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $('Normalize Diagnosis Result').first().json.completed_at }}"
+            }
+          ]
+        }
       },
-      "id": "insert-usage-event",
-      "name": "Insert Usage Event",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
+      "id": "18327753-5df7-4518-b130-4e57b3546cc4",
+      "name": "Mark Step 1 Complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
       "position": [
-        2280,
-        300
-      ]
+        2128,
+        1008
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "campaign_progress",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize Diagnosis Result').first().json.project_id }}"
+            },
+            {
+              "keyName": "step_number",
+              "condition": "eq",
+              "keyValue": "2"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "not_started"
+            }
+          ]
+        }
+      },
+      "id": "8df78c7a-8dde-418a-b0ff-a0479a460151",
+      "name": "Unlock Step 2",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        1008
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "US7BN2isZfFIOaIh",
+          "name": "Supabase account 3"
+        }
+      }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\n  ok: true,\n  stored: true,\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id\n} }}",
+        "responseBody": "={{ {\n  ok: true,\n  received: true,\n  job_id: $('Normalize Diagnosis Result').first().json.job_id,\n  project_id: $('Normalize Diagnosis Result').first().json.project_id,\n  diagnosis_id: $('Normalize Diagnosis Result').first().json.diagnosis_id,\n  status: 'completed'\n} }}",
         "options": {
           "responseCode": 200
         }
       },
-      "id": "respond-ok",
+      "id": "382defb3-63de-43f8-b0b2-3a137ff67a0e",
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        2520,
-        300
+        2576,
+        1008
       ]
     }
   ],
   "connections": {
-    "Webhook Trigger": {
+    "Webhook Trigger1": {
       "main": [
         [
           {
@@ -266,18 +385,29 @@
       "main": [
         [
           {
-            "node": "Verify HMAC",
+            "node": "Verify HMAC (DEV)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify HMAC": {
+    "Verify HMAC (DEV)": {
       "main": [
         [
           {
             "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Diagnosis Result",
             "type": "main",
             "index": 0
           }
@@ -295,7 +425,7 @@
         ]
       ]
     },
-    "SEO Context Tool": {
+    "SEO Signals Tool": {
       "ai_tool": [
         [
           {
@@ -306,62 +436,51 @@
         ]
       ]
     },
-    "AI Agent": {
-      "main": [
-        [
-          {
-            "node": "Normalize Diagnosis Result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Normalize Diagnosis Result": {
       "main": [
         [
           {
-            "node": "Prepare Supabase Payload",
+            "node": "Update seo_diagnoses",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Supabase Payload": {
+    "Update seo_diagnoses": {
       "main": [
         [
           {
-            "node": "Update Diagnosis in Supabase",
+            "node": "Update jobs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Diagnosis in Supabase": {
+    "Update jobs": {
       "main": [
         [
           {
-            "node": "Update Job in Supabase",
+            "node": "Mark Step 1 Complete",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Job in Supabase": {
+    "Mark Step 1 Complete": {
       "main": [
         [
           {
-            "node": "Insert Usage Event",
+            "node": "Unlock Step 2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Usage Event": {
+    "Unlock Step 2": {
       "main": [
         [
           {
@@ -373,9 +492,521 @@
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {
+    "Webhook Trigger1": [
+      {
+        "headers": {
+          "host": "lab.hellobotkilat.my.id",
+          "user-agent": "node",
+          "content-length": "11445",
+          "accept": "*/*",
+          "accept-encoding": "gzip, br",
+          "accept-language": "*",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "3.88.111.187",
+          "cf-ipcountry": "US",
+          "cf-ray": "a05daf282e0d9837-IAD",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "content-type": "application/json",
+          "sec-fetch-mode": "cors",
+          "x-app-signature": "b24df6bb6233bd5017b75c842321dc533c8488721fd5625b75a39281887c0c89",
+          "x-forwarded-for": "3.88.111.187, 104.23.211.84",
+          "x-forwarded-host": "lab.hellobotkilat.my.id",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "80e5b830ead5",
+          "x-invocation-id": "sin1::s67h8-1780479076488-acb821cc5f6f",
+          "x-real-ip": "104.23.211.84",
+          "x-vercel-id": "sin1::s67h8-1780479076488-acb821cc5f6f"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "jobId": "39344891-21bb-414c-bc4e-124a4bf9d5ad",
+          "projectId": "ade3c4d4-4dbf-4ea2-b6c3-4abcde088b20",
+          "userId": "7196a339-4064-4532-aee2-007152378a11",
+          "action": "identify_problem",
+          "payload": {
+            "app": "seo-agent",
+            "action": "identify_problem",
+            "submittedAt": "2026-06-03T09:31:19.560Z",
+            "job_id": "39344891-21bb-414c-bc4e-124a4bf9d5ad",
+            "job": {
+              "id": "39344891-21bb-414c-bc4e-124a4bf9d5ad",
+              "type": "identify_problem"
+            },
+            "project_id": "ade3c4d4-4dbf-4ea2-b6c3-4abcde088b20",
+            "project": {
+              "id": "ade3c4d4-4dbf-4ea2-b6c3-4abcde088b20"
+            },
+            "diagnosis_id": "8e907490-f3e4-44ca-bf79-7a605f4f82b3",
+            "diagnosis": {
+              "id": "8e907490-f3e4-44ca-bf79-7a605f4f82b3"
+            },
+            "identify_drafts": [
+              {
+                "id": "3da49bcc-653b-4715-a75d-4fa76ff8c00b",
+                "payload": {
+                  "industry": "Software Development Agency",
+                  "website_url": "https://kaitech.io/id",
+                  "business_name": "Kaitech",
+                  "target_audience": "Mid-market companies in Indonesia",
+                  "target_location": "Indonesia",
+                  "main_product_or_service": "Custom software development, web & mobile apps"
+                }
+              },
+              {
+                "id": "c39091cd-804d-497c-a074-4f22aa4ba5c7",
+                "payload": {
+                  "is_indexed": true,
+                  "indexed_pages": 45,
+                  "website_stage": "existing",
+                  "published_pages": 60,
+                  "main_seo_concern": "Stuck di brand keyword, sulit ranking commercial term",
+                  "organic_traffic_trend": "flat",
+                  "monthly_organic_traffic": 1500
+                }
+              },
+              {
+                "id": "3c47b366-3dac-4a83-b64e-1e9063dff452",
+                "payload": {
+                  "constraints": {
+                    "budget_level": "medium",
+                    "campaign_duration": "6 months",
+                    "link_building_capacity": "medium",
+                    "existing_brand_strength": "low",
+                    "content_capacity_per_month": 8,
+                    "industry_competition_level": "medium",
+                    "developer_support_available": true
+                  },
+                  "seo_baseline": {
+                    "bounce_rate": 0,
+                    "current_ctr": 0,
+                    "domain_authority": 0,
+                    "referring_domains": 0,
+                    "current_impressions": 0,
+                    "current_indexed_pages": 0,
+                    "current_conversion_rate": 0,
+                    "current_ranking_keywords": 0,
+                    "current_organic_conversions": 0,
+                    "current_monthly_organic_traffic": 0
+                  },
+                  "business_goal": {
+                    "target_market": "Indonesia",
+                    "target_period": "6 months",
+                    "main_business_goal": "traffic",
+                    "business_target_value": "10000 visits",
+                    "priority_product_or_service": "SEO Agent"
+                  }
+                }
+              },
+              {
+                "id": "e2b19e0b-0e95-4668-a068-a11b7bc359ab",
+                "payload": {
+                  "constraints": {
+                    "budget_level": "medium",
+                    "campaign_duration": "6 months",
+                    "link_building_capacity": "medium",
+                    "existing_brand_strength": "low",
+                    "content_capacity_per_month": 8,
+                    "industry_competition_level": "medium",
+                    "developer_support_available": true
+                  },
+                  "seo_baseline": {},
+                  "business_goal": {
+                    "target_market": "Indonesia",
+                    "target_period": "6 months",
+                    "main_business_goal": "traffic",
+                    "business_target_value": "10000 visits",
+                    "priority_product_or_service": "SEO Agent"
+                  }
+                }
+              },
+              {
+                "id": "f35ff35e-923b-45aa-99ec-bc522517776a",
+                "payload": {
+                  "robots_txt": "User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: https://kaitech.io/sitemap.xml",
+                  "sitemap_url": "https://kaitech.io/sitemap.xml",
+                  "noindex_issues": false,
+                  "canonical_issues": false,
+                  "crawl_errors_count": 2,
+                  "has_4xx_5xx_errors": false,
+                  "has_redirect_errors": false,
+                  "core_web_vitals_pass": true,
+                  "mobile_usability_issues": false
+                }
+              },
+              {
+                "id": "69a84267-5fed-4a37-ad18-13bd504479a1",
+                "payload": {
+                  "monthly_ctr": 1.5,
+                  "target_keywords": [
+                    "custom software development indonesia",
+                    "web development jakarta",
+                    "mobile app developer indonesia",
+                    "enterprise software solutions",
+                    "digital transformation services"
+                  ],
+                  "competitor_domains": [
+                    "softwareseni.com",
+                    "mitrais.com",
+                    "suitmedia.com"
+                  ],
+                  "monthly_impressions": 25000,
+                  "current_ranking_keywords": [
+                    "kaitech",
+                    "kaitech indonesia",
+                    "kaitech software house"
+                  ]
+                }
+              },
+              {
+                "id": "ecfa494a-26c3-47dd-ac37-7dc4ba02a305",
+                "payload": {
+                  "domain_rating": 28,
+                  "backlink_count": 220,
+                  "has_author_pages": false,
+                  "has_case_studies": true,
+                  "competitor_dr_avg": 45,
+                  "referring_domains": 35,
+                  "brand_mentions_estimate": 1
+                }
+              },
+              {
+                "id": "b285313b-d476-4e7a-8091-541168c1ee33",
+                "payload": {
+                  "bounce_rate": 60,
+                  "top_landing_pages": [
+                    "/id",
+                    "/id/services",
+                    "/id/case-studies"
+                  ],
+                  "avg_session_duration": 120,
+                  "monthly_organic_leads": 20,
+                  "monthly_organic_sales": 3,
+                  "cta_quality_self_rating": 6,
+                  "current_conversion_rate": 1.5
+                }
+              }
+            ],
+            "identify_merged": {
+              "industry": "Software Development Agency",
+              "website_url": "https://kaitech.io/id",
+              "business_name": "Kaitech",
+              "target_audience": "Mid-market companies in Indonesia",
+              "target_location": "Indonesia",
+              "main_product_or_service": "Custom software development, web & mobile apps",
+              "is_indexed": true,
+              "indexed_pages": 45,
+              "website_stage": "existing",
+              "published_pages": 60,
+              "main_seo_concern": "Stuck di brand keyword, sulit ranking commercial term",
+              "organic_traffic_trend": "flat",
+              "monthly_organic_traffic": 1500,
+              "constraints": {
+                "budget_level": "medium",
+                "campaign_duration": "6 months",
+                "link_building_capacity": "medium",
+                "existing_brand_strength": "low",
+                "content_capacity_per_month": 8,
+                "industry_competition_level": "medium",
+                "developer_support_available": true
+              },
+              "seo_baseline": {},
+              "business_goal": {
+                "target_market": "Indonesia",
+                "target_period": "6 months",
+                "main_business_goal": "traffic",
+                "business_target_value": "10000 visits",
+                "priority_product_or_service": "SEO Agent"
+              },
+              "robots_txt": "User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: https://kaitech.io/sitemap.xml",
+              "sitemap_url": "https://kaitech.io/sitemap.xml",
+              "noindex_issues": false,
+              "canonical_issues": false,
+              "crawl_errors_count": 2,
+              "has_4xx_5xx_errors": false,
+              "has_redirect_errors": false,
+              "core_web_vitals_pass": true,
+              "mobile_usability_issues": false,
+              "monthly_ctr": 1.5,
+              "target_keywords": [
+                "custom software development indonesia",
+                "web development jakarta",
+                "mobile app developer indonesia",
+                "enterprise software solutions",
+                "digital transformation services"
+              ],
+              "competitor_domains": [
+                "softwareseni.com",
+                "mitrais.com",
+                "suitmedia.com"
+              ],
+              "monthly_impressions": 25000,
+              "current_ranking_keywords": [
+                "kaitech",
+                "kaitech indonesia",
+                "kaitech software house"
+              ],
+              "domain_rating": 28,
+              "backlink_count": 220,
+              "has_author_pages": false,
+              "has_case_studies": true,
+              "competitor_dr_avg": 45,
+              "referring_domains": 35,
+              "brand_mentions_estimate": 1,
+              "bounce_rate": 60,
+              "top_landing_pages": [
+                "/id",
+                "/id/services",
+                "/id/case-studies"
+              ],
+              "avg_session_duration": 120,
+              "monthly_organic_leads": 20,
+              "monthly_organic_sales": 3,
+              "cta_quality_self_rating": 6,
+              "current_conversion_rate": 1.5
+            },
+            "identify": {
+              "drafts": [
+                {
+                  "id": "3da49bcc-653b-4715-a75d-4fa76ff8c00b",
+                  "payload": {
+                    "industry": "Software Development Agency",
+                    "website_url": "https://kaitech.io/id",
+                    "business_name": "Kaitech",
+                    "target_audience": "Mid-market companies in Indonesia",
+                    "target_location": "Indonesia",
+                    "main_product_or_service": "Custom software development, web & mobile apps"
+                  }
+                },
+                {
+                  "id": "c39091cd-804d-497c-a074-4f22aa4ba5c7",
+                  "payload": {
+                    "is_indexed": true,
+                    "indexed_pages": 45,
+                    "website_stage": "existing",
+                    "published_pages": 60,
+                    "main_seo_concern": "Stuck di brand keyword, sulit ranking commercial term",
+                    "organic_traffic_trend": "flat",
+                    "monthly_organic_traffic": 1500
+                  }
+                },
+                {
+                  "id": "3c47b366-3dac-4a83-b64e-1e9063dff452",
+                  "payload": {
+                    "constraints": {
+                      "budget_level": "medium",
+                      "campaign_duration": "6 months",
+                      "link_building_capacity": "medium",
+                      "existing_brand_strength": "low",
+                      "content_capacity_per_month": 8,
+                      "industry_competition_level": "medium",
+                      "developer_support_available": true
+                    },
+                    "seo_baseline": {
+                      "bounce_rate": 0,
+                      "current_ctr": 0,
+                      "domain_authority": 0,
+                      "referring_domains": 0,
+                      "current_impressions": 0,
+                      "current_indexed_pages": 0,
+                      "current_conversion_rate": 0,
+                      "current_ranking_keywords": 0,
+                      "current_organic_conversions": 0,
+                      "current_monthly_organic_traffic": 0
+                    },
+                    "business_goal": {
+                      "target_market": "Indonesia",
+                      "target_period": "6 months",
+                      "main_business_goal": "traffic",
+                      "business_target_value": "10000 visits",
+                      "priority_product_or_service": "SEO Agent"
+                    }
+                  }
+                },
+                {
+                  "id": "e2b19e0b-0e95-4668-a068-a11b7bc359ab",
+                  "payload": {
+                    "constraints": {
+                      "budget_level": "medium",
+                      "campaign_duration": "6 months",
+                      "link_building_capacity": "medium",
+                      "existing_brand_strength": "low",
+                      "content_capacity_per_month": 8,
+                      "industry_competition_level": "medium",
+                      "developer_support_available": true
+                    },
+                    "seo_baseline": {},
+                    "business_goal": {
+                      "target_market": "Indonesia",
+                      "target_period": "6 months",
+                      "main_business_goal": "traffic",
+                      "business_target_value": "10000 visits",
+                      "priority_product_or_service": "SEO Agent"
+                    }
+                  }
+                },
+                {
+                  "id": "f35ff35e-923b-45aa-99ec-bc522517776a",
+                  "payload": {
+                    "robots_txt": "User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: https://kaitech.io/sitemap.xml",
+                    "sitemap_url": "https://kaitech.io/sitemap.xml",
+                    "noindex_issues": false,
+                    "canonical_issues": false,
+                    "crawl_errors_count": 2,
+                    "has_4xx_5xx_errors": false,
+                    "has_redirect_errors": false,
+                    "core_web_vitals_pass": true,
+                    "mobile_usability_issues": false
+                  }
+                },
+                {
+                  "id": "69a84267-5fed-4a37-ad18-13bd504479a1",
+                  "payload": {
+                    "monthly_ctr": 1.5,
+                    "target_keywords": [
+                      "custom software development indonesia",
+                      "web development jakarta",
+                      "mobile app developer indonesia",
+                      "enterprise software solutions",
+                      "digital transformation services"
+                    ],
+                    "competitor_domains": [
+                      "softwareseni.com",
+                      "mitrais.com",
+                      "suitmedia.com"
+                    ],
+                    "monthly_impressions": 25000,
+                    "current_ranking_keywords": [
+                      "kaitech",
+                      "kaitech indonesia",
+                      "kaitech software house"
+                    ]
+                  }
+                },
+                {
+                  "id": "ecfa494a-26c3-47dd-ac37-7dc4ba02a305",
+                  "payload": {
+                    "domain_rating": 28,
+                    "backlink_count": 220,
+                    "has_author_pages": false,
+                    "has_case_studies": true,
+                    "competitor_dr_avg": 45,
+                    "referring_domains": 35,
+                    "brand_mentions_estimate": 1
+                  }
+                },
+                {
+                  "id": "b285313b-d476-4e7a-8091-541168c1ee33",
+                  "payload": {
+                    "bounce_rate": 60,
+                    "top_landing_pages": [
+                      "/id",
+                      "/id/services",
+                      "/id/case-studies"
+                    ],
+                    "avg_session_duration": 120,
+                    "monthly_organic_leads": 20,
+                    "monthly_organic_sales": 3,
+                    "cta_quality_self_rating": 6,
+                    "current_conversion_rate": 1.5
+                  }
+                }
+              ],
+              "merged": {
+                "industry": "Software Development Agency",
+                "website_url": "https://kaitech.io/id",
+                "business_name": "Kaitech",
+                "target_audience": "Mid-market companies in Indonesia",
+                "target_location": "Indonesia",
+                "main_product_or_service": "Custom software development, web & mobile apps",
+                "is_indexed": true,
+                "indexed_pages": 45,
+                "website_stage": "existing",
+                "published_pages": 60,
+                "main_seo_concern": "Stuck di brand keyword, sulit ranking commercial term",
+                "organic_traffic_trend": "flat",
+                "monthly_organic_traffic": 1500,
+                "constraints": {
+                  "budget_level": "medium",
+                  "campaign_duration": "6 months",
+                  "link_building_capacity": "medium",
+                  "existing_brand_strength": "low",
+                  "content_capacity_per_month": 8,
+                  "industry_competition_level": "medium",
+                  "developer_support_available": true
+                },
+                "seo_baseline": {},
+                "business_goal": {
+                  "target_market": "Indonesia",
+                  "target_period": "6 months",
+                  "main_business_goal": "traffic",
+                  "business_target_value": "10000 visits",
+                  "priority_product_or_service": "SEO Agent"
+                },
+                "robots_txt": "User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: https://kaitech.io/sitemap.xml",
+                "sitemap_url": "https://kaitech.io/sitemap.xml",
+                "noindex_issues": false,
+                "canonical_issues": false,
+                "crawl_errors_count": 2,
+                "has_4xx_5xx_errors": false,
+                "has_redirect_errors": false,
+                "core_web_vitals_pass": true,
+                "mobile_usability_issues": false,
+                "monthly_ctr": 1.5,
+                "target_keywords": [
+                  "custom software development indonesia",
+                  "web development jakarta",
+                  "mobile app developer indonesia",
+                  "enterprise software solutions",
+                  "digital transformation services"
+                ],
+                "competitor_domains": [
+                  "softwareseni.com",
+                  "mitrais.com",
+                  "suitmedia.com"
+                ],
+                "monthly_impressions": 25000,
+                "current_ranking_keywords": [
+                  "kaitech",
+                  "kaitech indonesia",
+                  "kaitech software house"
+                ],
+                "domain_rating": 28,
+                "backlink_count": 220,
+                "has_author_pages": false,
+                "has_case_studies": true,
+                "competitor_dr_avg": 45,
+                "referring_domains": 35,
+                "brand_mentions_estimate": 1,
+                "bounce_rate": 60,
+                "top_landing_pages": [
+                  "/id",
+                  "/id/services",
+                  "/id/case-studies"
+                ],
+                "avg_session_duration": 120,
+                "monthly_organic_leads": 20,
+                "monthly_organic_sales": 3,
+                "cta_quality_self_rating": 6,
+                "current_conversion_rate": 1.5
+              }
+            }
+          },
+          "callbackUrl": "https://agent-seo.vercel.app/api/webhooks/n8n/diagnosis-complete",
+          "job_id": "39344891-21bb-414c-bc4e-124a4bf9d5ad",
+          "project_id": "ade3c4d4-4dbf-4ea2-b6c3-4abcde088b20",
+          "user_id": "7196a339-4064-4532-aee2-007152378a11",
+          "callback_url": "https://agent-seo.vercel.app/api/webhooks/n8n/diagnosis-complete"
+        },
+        "webhookUrl": "https://lab.hellobotkilat.my.id/webhook/seo-agent/identify-problem",
+        "executionMode": "production"
+      }
+    ]
   },
-  "versionId": "2"
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9aae001b7930db2be15063a3d92516c97eac6c98f38154362ce95b1f0b8540ac"
+  }
 }

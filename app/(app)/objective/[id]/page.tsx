@@ -46,6 +46,10 @@ function toObject(value: unknown) {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as ObjectiveRecord) : {};
 }
 
+function isObjectLike(value: unknown) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function formatKey(key: string) {
   return key
     .replace(/_/g, ' ')
@@ -159,6 +163,28 @@ function renderArrayCards(title: string, items: unknown[], emptyLabel: string) {
   );
 }
 
+function renderMetricsSection(title: string, value: unknown, emptyLabel: string) {
+  if (Array.isArray(value)) {
+    return renderArrayCards(title, value, emptyLabel);
+  }
+
+  if (isObjectLike(value)) {
+    return renderKeyValueGrid(title, value as Record<string, unknown>, emptyLabel);
+  }
+
+  return (
+    <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
+      </div>
+      <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+        {emptyLabel}
+      </p>
+    </section>
+  );
+}
+
 export default async function ObjectivePage({ params }: { params: { id: string } }) {
   const user = await requireUser();
   const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
@@ -215,7 +241,7 @@ export default async function ObjectivePage({ params }: { params: { id: string }
   const generatedAt = formatWibDateTime(createdAt);
   const baseline = toObject(objective.baseline);
   const target = toObject(objective.target);
-  const inputMetrics = toObject(objective.input_metrics);
+  const inputMetrics = objective.input_metrics;
   const outputMetrics = toArray(objective.output_metrics);
   const outcomeMetrics = toArray(objective.outcome_metrics);
   const riskNotes = toArray(objective.risk_notes);
@@ -315,7 +341,7 @@ export default async function ObjectivePage({ params }: { params: { id: string }
 
             {renderKeyValueGrid(locale === 'id' ? 'Baseline' : 'Baseline', baseline, locale === 'id' ? 'Belum ada detail baseline.' : 'No baseline details were captured.')}
             {renderKeyValueGrid(locale === 'id' ? 'Target' : 'Target', target, locale === 'id' ? 'Belum ada definisi target.' : 'No target definition was captured.')}
-            {renderKeyValueGrid(locale === 'id' ? 'Metrik Input' : 'Input Metrics', inputMetrics, locale === 'id' ? 'Belum ada metrik input.' : 'No input metrics recorded yet.')}
+            {renderMetricsSection(locale === 'id' ? 'Metrik Input' : 'Input Metrics', inputMetrics, locale === 'id' ? 'Belum ada metrik input.' : 'No input metrics recorded yet.')}
             {renderArrayCards(locale === 'id' ? 'Metrik Output' : 'Output Metrics', outputMetrics, locale === 'id' ? 'Belum ada metrik output.' : 'No output metrics were generated.')}
             {renderArrayCards(locale === 'id' ? 'Metrik Outcome' : 'Outcome Metrics', outcomeMetrics, locale === 'id' ? 'Belum ada metrik outcome.' : 'No outcome metrics were generated.')}
 

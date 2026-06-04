@@ -2,19 +2,17 @@
 
 import { Search, Bell, History, ArrowUpRight, Languages } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { MobileSidebarSheet } from './MobileSidebarSheet';
 import { getAppCopy, type Locale, LOCALE_COOKIE } from '@/lib/i18n';
 import { useTransition } from 'react';
 
 function LanguageToggle({ locale }: { locale: Locale }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function setLocale(nextLocale: Locale) {
     document.cookie = `${LOCALE_COOKIE}=${nextLocale}; path=/; max-age=31536000`;
     startTransition(() => {
-      router.refresh();
+      window.location.reload();
     });
   }
 
@@ -27,9 +25,13 @@ function LanguageToggle({ locale }: { locale: Locale }) {
       <button
         type="button"
         onClick={() => setLocale('en')}
+        disabled={pending}
         className={[
           'rounded-full px-3 py-2 transition-colors',
-          locale === 'en' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'
+          locale === 'en'
+            ? 'bg-primary text-on-primary'
+            : 'text-on-surface-variant hover:bg-surface-container-high',
+          pending ? 'cursor-wait opacity-70' : ''
         ].join(' ')}
         aria-pressed={locale === 'en'}
       >
@@ -40,7 +42,10 @@ function LanguageToggle({ locale }: { locale: Locale }) {
         onClick={() => setLocale('id')}
         className={[
           'rounded-full px-3 py-2 transition-colors',
-          locale === 'id' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'
+          locale === 'id'
+            ? 'bg-primary text-on-primary'
+            : 'text-on-surface-variant hover:bg-surface-container-high',
+          pending ? 'cursor-wait opacity-70' : ''
         ].join(' ')}
         aria-pressed={locale === 'id'}
         disabled={pending}
