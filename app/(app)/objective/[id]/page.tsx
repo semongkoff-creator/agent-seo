@@ -1,460 +1,372 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import {
-  ArrowUpRight,
-  Brain,
-  CalendarRange,
-  CheckCircle2,
-  ChevronRight,
-  Flame,
-  ShieldAlert,
-  Sparkles,
-  Target,
-  TrendingUp
-} from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { AppError } from '@/lib/errors';
+import { ArrowUpRight, CalendarRange, CheckCircle2, Clock3, Sparkles, Target } from 'lucide-react';
 import { requireUser } from '@/lib/auth/session';
-import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { getDiagnosis } from '@/lib/services/diagnoses';
 import { getObjective } from '@/lib/services/objectives';
 import { getProject } from '@/lib/services/projects';
-import { formatWibDate, formatWibDateTime } from '@/lib/time';
+import { getLocaleFromValue, LOCALE_COOKIE, type Locale } from '@/lib/i18n';
+import { formatWibDateTime } from '@/lib/time';
+import { getTechnicalErrors } from '@/lib/mocks/technical-errors';
+import { TechnicalPillar } from './pillars/TechnicalPillar';
+import { ContentKeywordPillar } from './pillars/ContentKeywordPillar';
+import { BusinessImpactPillar } from './pillars/BusinessImpactPillar';
+import { formatLabel, toArray, toRecord, toText } from './pillars/utils';
 
 type ObjectiveRecord = Record<string, unknown>;
 
-function toText(value: unknown, fallback: string) {
-  return typeof value === 'string' && value.trim() ? value : fallback;
-}
-
-function toNumber(value: unknown, fallback = 0) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function toArray(value: unknown) {
-  return Array.isArray(value) ? value : [];
-}
-
-function toObject(value: unknown) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as ObjectiveRecord) : {};
-}
-
-function isObjectLike(value: unknown) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function formatKey(key: string) {
-  return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (character) => character.toUpperCase())
-    .trim();
-}
-
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') {
-    return 'n/a';
-  }
-
-  if (typeof value === 'number') {
-    return value.toLocaleString();
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => formatValue(item)).join(', ');
-  }
-
-  if (typeof value === 'object') {
-    return Object.entries(value as Record<string, unknown>)
-      .map(([key, item]) => `${formatKey(key)}: ${formatValue(item)}`)
-      .join(' · ');
-  }
-
-  return String(value);
-}
-
-function objectiveTypeLabel(value: unknown): string {
-  const label = toText(value, 'mixed');
-  const labels: Record<string, string> = {
+const objectiveTypeLabels: Record<Locale, Record<string, string>> = {
+  en: {
     technical_recovery: 'Technical Recovery',
     qualified_traffic: 'Qualified Traffic',
     authority_growth: 'Authority Growth',
     conversion_improvement: 'Conversion Improvement',
     foundation_building: 'Foundation Building',
     mixed: 'Mixed Objective'
-  };
+  },
+  id: {
+    technical_recovery: 'Recovery Teknis',
+    qualified_traffic: 'Traffic Tertarget',
+    authority_growth: 'Growth Authority',
+    conversion_improvement: 'Perbaikan Konversi',
+    foundation_building: 'Bangun Fondasi',
+    mixed: 'Objective Campuran'
+  }
+};
 
-  return labels[label] ?? label.replace(/_/g, ' ');
+function objectiveTypeLabel(value: unknown, locale: Locale) {
+  const label = toText(value, 'mixed');
+  return objectiveTypeLabels[locale][label] ?? formatLabel(label);
 }
 
-function renderKeyValueGrid(title: string, data: Record<string, unknown>, emptyLabel: string) {
-  const entries = Object.entries(data);
+function countFilled(values: Array<unknown>) {
+  return values.filter((value) => {
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
 
-  return (
-    <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" />
-        <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
-      </div>
+    if (typeof value === 'number') {
+      return Number.isFinite(value);
+    }
 
-      {entries.length > 0 ? (
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {entries.map(([key, value]) => (
-            <div key={key} className="rounded-2xl border border-outline-variant bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                {formatKey(key)}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-on-surface">{formatValue(value)}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
-          {emptyLabel}
-        </p>
-      )}
-    </section>
-  );
+    if (typeof value === 'boolean') {
+      return true;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return Boolean(value);
+  }).length;
 }
 
-function renderArrayCards(title: string, items: unknown[], emptyLabel: string) {
-  return (
-    <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
-      <div className="flex items-center gap-2">
-        <Brain className="h-4 w-4 text-primary" />
-        <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {items.map((item, index) => {
-            const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-            const label = toText(record.label ?? record.title, `Item ${index + 1}`);
-            const value = toText(record.value ?? record.amount ?? record.metric, formatValue(item));
-            const source = toText(record.source ?? record.hint ?? record.note, '');
-
-            return (
-              <article key={`${label}-${index}`} className="rounded-2xl border border-outline-variant bg-white p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                  {label}
-                </p>
-                <p className="mt-2 text-xl font-semibold text-on-surface">{value}</p>
-                {source ? <p className="mt-2 text-sm leading-6 text-on-surface-variant">{source}</p> : null}
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
-          {emptyLabel}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function renderMetricsSection(title: string, value: unknown, emptyLabel: string) {
-  if (Array.isArray(value)) {
-    return renderArrayCards(title, value, emptyLabel);
+function progressFromRatio(numerator: number, denominator: number) {
+  if (denominator <= 0) {
+    return 100;
   }
 
-  if (isObjectLike(value)) {
-    return renderKeyValueGrid(title, value as Record<string, unknown>, emptyLabel);
-  }
-
-  return (
-    <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" />
-        <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
-      </div>
-      <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
-        {emptyLabel}
-      </p>
-    </section>
-  );
+  return Math.max(0, Math.min(100, Math.round((numerator / denominator) * 100)));
 }
 
 export default async function ObjectivePage({ params }: { params: { id: string } }) {
   const user = await requireUser();
   const locale = getLocaleFromValue(cookies().get(LOCALE_COOKIE)?.value);
-  const copy = getAppCopy(locale).objective;
+
   let objective: ObjectiveRecord;
   try {
     objective = (await getObjective(user.id, params.id)) as ObjectiveRecord;
   } catch (error) {
-    if (error instanceof AppError && error.statusCode === 404) {
+    if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
       notFound();
     }
 
     throw error;
   }
 
-  const objectiveProjectId = String(objective.project_id);
+  const projectId = String(objective.project_id);
 
   let project: ObjectiveRecord;
+  let diagnosis: ObjectiveRecord | null = null;
+
   try {
-    project = (await getProject(user.id, objectiveProjectId)) as ObjectiveRecord;
+    [project, diagnosis] = await Promise.all([
+      getProject(user.id, projectId) as Promise<ObjectiveRecord>,
+      objective.diagnosis_id
+        ? getDiagnosis(user.id, String(objective.diagnosis_id))
+            .then((result) => result as ObjectiveRecord)
+            .catch((error) => {
+              if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
+                return null;
+            }
+
+            throw error;
+          })
+        : Promise.resolve(null),
+    ]);
   } catch (error) {
-    if (error instanceof AppError && error.statusCode === 404) {
+    if (error instanceof Error && 'statusCode' in error && (error as { statusCode?: number }).statusCode === 404) {
       notFound();
     }
 
     throw error;
   }
 
-  let diagnosis: ObjectiveRecord | null = null;
-  if (objective.diagnosis_id) {
-    try {
-      diagnosis = (await getDiagnosis(user.id, String(objective.diagnosis_id))) as ObjectiveRecord;
-    } catch (error) {
-      if (error instanceof AppError && error.statusCode === 404) {
-        diagnosis = null;
-      } else {
-        throw error;
-      }
-    }
-  }
-
+  const technicalErrors = await getTechnicalErrors(projectId);
   const projectName = toText(project.name, 'Project');
-  const objectiveType = objectiveTypeLabel(objective.objective_type);
   const smartObjective = toText(
     objective.smart_objective,
-    'Pending objective generation. The final SMART objective will appear here once the result is stored in Supabase.'
+    locale === 'id'
+      ? 'Objective akan tampil setelah hasil final tersimpan.'
+      : 'The objective will appear once the final output is stored.'
   );
+  const objectiveType = objectiveTypeLabel(objective.objective_type, locale);
   const status = toText(objective.status, 'pending');
-  const modelUsed = toText(objective.model_used, 'n8n');
-  const achievabilityScore = toText(objective.achievability_score, '');
-  const achievabilityPercent = objective.achievability_percent ? `${toNumber(objective.achievability_percent)}%` : 'n/a';
   const createdAt = toText(objective.completed_at ?? objective.created_at, 'Recently');
-  const analyzedDate = formatWibDate(createdAt);
   const generatedAt = formatWibDateTime(createdAt);
-  const baseline = toObject(objective.baseline);
-  const target = toObject(objective.target);
-  const inputMetrics = objective.input_metrics;
-  const outputMetrics = toArray(objective.output_metrics);
-  const outcomeMetrics = toArray(objective.outcome_metrics);
-  const riskNotes = toArray(objective.risk_notes);
+  const objectiveTarget = toRecord(objective.target);
+  const objectiveOutput = toRecord(objective.output_metrics);
+  const objectiveInput = toRecord(objective.input_metrics);
+  const businessGoal = toRecord(objectiveInput.business_goal);
+  const riskNotes = toArray(objective.risk_notes).slice(0, 3);
+
+  const technicalProgress = progressFromRatio(
+    technicalErrors.filter((error) => error.status === 'fixed').length,
+    technicalErrors.length
+  );
+  const contentProgress = progressFromRatio(
+    countFilled([
+      smartObjective,
+      objectiveOutput.action_items,
+      objectiveOutput.target_metrics,
+      objectiveOutput.keywords,
+      objectiveOutput.content_plan
+    ]),
+    5
+  );
+  const businessProgress = progressFromRatio(
+    countFilled([
+      businessGoal.business_target_value,
+      objectiveTarget,
+      objectiveOutput.roi_estimate,
+      objective.achievability_percent
+    ]),
+    4
+  );
+  const overallProgress = Math.round((technicalProgress + contentProgress + businessProgress) / 3);
+
+  const diagnosisHref = diagnosis && typeof diagnosis.id === 'string' ? `/diagnosis/${diagnosis.id}` : '/diagnosis';
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <PageHeader
-          eyebrow={copy.libraryTitle}
-          title={smartObjective}
-          description={
-            locale === 'id'
-              ? `Dihasilkan untuk ${projectName} dari diagnosis terbaru.`
-              : `Generated for ${projectName} from the latest diagnosis.`
-          }
-          actions={[
-            {
-              label: locale === 'id' ? 'Buka Builder' : 'Open Builder',
-              href: `/projects/${objectiveProjectId}/objective`
-            },
-            {
-              label: locale === 'id' ? 'Buka Campaign' : 'Open Campaign',
-              href: `/campaign/${objectiveProjectId}`
-            }
-          ]}
-        >
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              <Target className="h-3.5 w-3.5" />
-              {objectiveType}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
-              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-              {status}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
-              <CalendarRange className="h-3.5 w-3.5 text-primary" />
-              {analyzedDate}
-            </span>
-          </div>
-        </PageHeader>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatCard
-            label={locale === 'id' ? 'Ketercapian' : 'Achievability'}
-            value={achievabilityPercent}
-            delta={achievabilityScore ? `Score: ${achievabilityScore}` : locale === 'id' ? 'Menunggu skor' : 'Awaiting score'}
-            icon={TrendingUp}
-            toneClassName="text-primary"
-          />
-          <StatCard
-            label={locale === 'id' ? 'Dihasilkan via' : 'Generated via'}
-            value={modelUsed}
-            delta={
-              diagnosis
-                ? `${locale === 'id' ? 'Diagnosis' : 'Diagnosis'}: ${toText(diagnosis.primary_problem_type, 'mixed')}`
-                : locale === 'id'
-                  ? 'Tidak ada diagnosis terkait'
-                  : 'No linked diagnosis'
-            }
-            icon={Brain}
-          />
-          <StatCard
-            label={locale === 'id' ? 'Dibuat' : 'Created'}
-            value={generatedAt}
-            delta={status === 'completed' ? (locale === 'id' ? 'Siap dieksekusi' : 'Ready for execution') : locale === 'id' ? 'Masih diproses' : 'Still in progress'}
-            icon={Sparkles}
-          />
-        </div>
-
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.5fr)_380px]">
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
-              <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-on-surface">
-                  {locale === 'id' ? 'Objective SMART' : 'SMART Objective'}
-                </h2>
+        <div className="rounded-[32px] border border-outline-variant bg-surface-container-lowest p-6 shadow-sm md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-4xl space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {objectiveType}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  {status}
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant">
+                  <CalendarRange className="h-3.5 w-3.5 text-primary" />
+                  {generatedAt}
+                </span>
               </div>
-              <p className="mt-4 text-base leading-7 text-on-surface">{smartObjective}</p>
-              <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Status</p>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                    {locale === 'id' ? 'Status' : 'Status'}
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
+                  {locale === 'id' ? 'Objective' : 'Objective'}
+                </p>
+                <h1 className="mt-3 text-2xl font-semibold tracking-tight text-on-surface md:text-3xl lg:text-4xl">
+                  {projectName}
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-on-surface-variant md:text-base">{smartObjective}</p>
+              </div>
+
+              <div className="space-y-3 rounded-[24px] border border-outline-variant bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <p className="text-sm font-semibold text-on-surface">
+                    {locale === 'id' ? 'Overall progress' : 'Overall progress'}
                   </p>
-                  <p className="mt-2 text-lg font-semibold text-on-surface">{status}</p>
+                  <p className="text-sm font-semibold text-on-surface">{overallProgress}%</p>
                 </div>
-                <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                    {locale === 'id' ? 'Tipe objective' : 'Objective type'}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-on-surface">{objectiveType}</p>
+                <div className="h-3 overflow-hidden rounded-full bg-surface-container">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${overallProgress}%` }} />
+                </div>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  <div className="rounded-2xl bg-surface-container-low px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      {locale === 'id' ? 'Technical' : 'Technical'}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-on-surface">{technicalProgress}%</p>
+                  </div>
+                  <div className="rounded-2xl bg-surface-container-low px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      {locale === 'id' ? 'Content' : 'Content'}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-on-surface">{contentProgress}%</p>
+                  </div>
+                  <div className="rounded-2xl bg-surface-container-low px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                      {locale === 'id' ? 'Business' : 'Business'}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-on-surface">{businessProgress}%</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {renderKeyValueGrid(locale === 'id' ? 'Baseline' : 'Baseline', baseline, locale === 'id' ? 'Belum ada detail baseline.' : 'No baseline details were captured.')}
-            {renderKeyValueGrid(locale === 'id' ? 'Target' : 'Target', target, locale === 'id' ? 'Belum ada definisi target.' : 'No target definition was captured.')}
-            {renderMetricsSection(locale === 'id' ? 'Metrik Input' : 'Input Metrics', inputMetrics, locale === 'id' ? 'Belum ada metrik input.' : 'No input metrics recorded yet.')}
-            {renderArrayCards(locale === 'id' ? 'Metrik Output' : 'Output Metrics', outputMetrics, locale === 'id' ? 'Belum ada metrik output.' : 'No output metrics were generated.')}
-            {renderArrayCards(locale === 'id' ? 'Metrik Outcome' : 'Outcome Metrics', outcomeMetrics, locale === 'id' ? 'Belum ada metrik outcome.' : 'No outcome metrics were generated.')}
-
-            <section className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-primary" />
-                <h2 className="text-lg font-semibold text-on-surface">
-                  {locale === 'id' ? 'Catatan Risiko' : 'Risk Notes'}
-                </h2>
+            <div className="flex flex-col gap-3 rounded-[28px] border border-outline-variant bg-white p-5 shadow-sm lg:min-w-[320px]">
+              <div className="flex items-center gap-2 text-sm font-semibold text-on-surface">
+                <Clock3 className="h-4 w-4 text-primary" />
+                {locale === 'id' ? 'Snapshot' : 'Snapshot'}
               </div>
-
-              {riskNotes.length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {riskNotes.map((note, index) => (
-                    <li
-                      key={`${String(note)}-${index}`}
-                      className="flex items-start gap-3 rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm leading-6 text-on-surface"
-                    >
-                      <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-error-container text-xs font-semibold text-on-error-container">
-                        {index + 1}
-                      </span>
-                      <span>{formatValue(note)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
-                  {locale === 'id'
-                    ? 'Belum ada catatan risiko eksplisit untuk objective ini.'
-                    : 'No explicit risk notes were recorded for this objective.'}
+              <p className="text-sm leading-6 text-on-surface-variant">
+                {locale === 'id'
+                  ? 'Gunakan objective ini sebagai rencana kerja yang langsung bisa dieksekusi.'
+                  : 'Use this objective as an execution-ready working plan.'}
+              </p>
+              <Link
+                href={diagnosisHref as any}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-transform hover:-translate-y-0.5"
+              >
+                {locale === 'id' ? 'Buka Diagnosis' : 'Open Diagnosis'}
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  {locale === 'id' ? 'Diagnosis reference' : 'Diagnosis reference'}
                 </p>
-              )}
-            </section>
+                <p className="mt-2 text-sm leading-6 text-on-surface">
+                  {diagnosis
+                    ? toText(diagnosis.diagnosis_summary, locale === 'id' ? 'Belum ada ringkasan diagnosis.' : 'No diagnosis summary available yet.')
+                    : locale === 'id'
+                      ? 'Diagnosis belum terhubung.'
+                      : 'No diagnosis is linked to this objective yet.'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  {locale === 'id' ? 'Generated at' : 'Generated at'}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-on-surface">{generatedAt}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <TechnicalPillar
+            projectId={projectId}
+            diagnosisId={diagnosis && typeof diagnosis.id === 'string' ? diagnosis.id : null}
+            initialErrors={technicalErrors}
+            locale={locale}
+          />
+          <ContentKeywordPillar objective={objective} locale={locale} />
+          <BusinessImpactPillar objective={objective} locale={locale} />
+        </div>
+
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-semibold text-on-surface">
+                {locale === 'id' ? 'Ringkasan meta' : 'Meta summary'}
+              </h2>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  {locale === 'id' ? 'Project' : 'Project'}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-on-surface">{projectName}</p>
+              </div>
+              <div className="rounded-2xl border border-outline-variant bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                  {locale === 'id' ? 'Objective ID' : 'Objective ID'}
+                </p>
+                <p className="mt-2 truncate text-sm font-semibold text-on-surface">{String(params.id)}</p>
+              </div>
+            </div>
           </div>
 
           <aside className="space-y-6">
-            <div className="rounded-[28px] border border-primary bg-primary p-6 text-on-primary shadow-lg shadow-primary/20">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-on-primary/80">
-                {locale === 'id' ? 'Konteks Project' : 'Project Context'}
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold leading-tight">{projectName}</h2>
-              <p className="mt-3 text-sm leading-6 text-on-primary/90">
-                {locale === 'id'
-                  ? 'Objective ini dihasilkan dari diagnosis terakhir yang selesai dan siap menjadi input campaign plan.'
-                  : 'This objective was generated from the most recent completed diagnosis and is ready to feed the campaign plan.'}
-              </p>
-              <div className="mt-6 grid grid-cols-1 gap-3">
-                <div className="rounded-2xl border border-white/25 bg-white/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-primary/70">
-                    {locale === 'id' ? 'Referensi diagnosis' : 'Diagnosis reference'}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold">
-                    {diagnosis
-                      ? toText(diagnosis.diagnosis_summary, 'No diagnosis summary available.')
-                      : 'No linked diagnosis'}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/25 bg-white/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-primary/70">
-                    {locale === 'id' ? 'Model' : 'Model'}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold">{modelUsed}</p>
-                </div>
-              </div>
-            </div>
-
             <div className="rounded-[28px] border border-outline-variant bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">
-                <ArrowUpRight className="h-4 w-4 text-primary" />
-                <h3 className="text-lg font-semibold text-on-surface">Next Actions</h3>
+                <Target className="h-4 w-4 text-primary" />
+                <h3 className="text-lg font-semibold text-on-surface">
+                  {locale === 'id' ? 'Quick Actions' : 'Quick Actions'}
+                </h3>
               </div>
 
               <div className="mt-4 space-y-3">
                 <Link
-                  href={`/campaign/${objectiveProjectId}`}
+                  href={diagnosisHref as any}
                   className="flex items-center justify-between rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface transition-colors hover:border-primary hover:bg-primary/5"
                 >
-                {locale === 'id' ? 'Buka board campaign' : 'Open campaign board'}
-                  <ChevronRight className="h-4 w-4 text-primary" />
+                  {locale === 'id' ? 'Lihat diagnosis' : 'View diagnosis'}
+                  <ArrowUpRight className="h-4 w-4 text-primary" />
                 </Link>
                 <Link
-                  href={`/projects/${objectiveProjectId}/objective`}
+                  href={`/projects/${projectId}/objective` as any}
                   className="flex items-center justify-between rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface transition-colors hover:border-primary hover:bg-primary/5"
                 >
-                {locale === 'id' ? 'Generate ulang objective' : 'Regenerate objective'}
-                  <ChevronRight className="h-4 w-4 text-primary" />
+                  {locale === 'id' ? 'Regenerate objective' : 'Regenerate objective'}
+                  <ArrowUpRight className="h-4 w-4 text-primary" />
                 </Link>
                 <Link
-                  href={`/projects/${objectiveProjectId}/identify/step/1`}
+                  href={`/campaign/${projectId}` as any}
                   className="flex items-center justify-between rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface transition-colors hover:border-primary hover:bg-primary/5"
                 >
-                {locale === 'id' ? 'Lihat ulang diagnosis' : 'Revisit diagnosis'}
-                  <ChevronRight className="h-4 w-4 text-primary" />
+                  {locale === 'id' ? 'Buka campaign board' : 'Open campaign board'}
+                  <ArrowUpRight className="h-4 w-4 text-primary" />
                 </Link>
               </div>
             </div>
 
             <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-                {locale === 'id' ? 'Meta Objective' : 'Objective Meta'}
+                {locale === 'id' ? 'Risk Notes' : 'Risk Notes'}
               </h3>
+              {riskNotes.length > 0 ? (
+                <ul className="mt-4 space-y-2 text-sm leading-6 text-on-surface-variant">
+                  {riskNotes.map((note, index) => (
+                    <li key={`${String(note)}-${index}`} className="rounded-2xl border border-outline-variant bg-white px-4 py-3">
+                      {String(note)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+                  {locale === 'id'
+                    ? 'Belum ada risk notes eksplisit untuk objective ini.'
+                    : 'No explicit risk notes were recorded for this objective.'}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-[28px] border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-on-surface">
+                <CalendarRange className="h-4 w-4 text-primary" />
+                {locale === 'id' ? 'Objective Meta' : 'Objective Meta'}
+              </div>
               <dl className="mt-4 space-y-3">
                 <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container-low px-4 py-3">
+                  <dt className="text-sm text-on-surface-variant">{locale === 'id' ? 'Type' : 'Type'}</dt>
+                  <dd className="text-sm font-semibold text-on-surface">{objectiveType}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container-low px-4 py-3">
+                  <dt className="text-sm text-on-surface-variant">{locale === 'id' ? 'Status' : 'Status'}</dt>
+                  <dd className="text-sm font-semibold text-on-surface">{status}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container-low px-4 py-3">
                   <dt className="text-sm text-on-surface-variant">{locale === 'id' ? 'Project' : 'Project'}</dt>
-                  <dd className="text-sm font-semibold text-on-surface">{projectName}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container-low px-4 py-3">
-                  <dt className="text-sm text-on-surface-variant">{locale === 'id' ? 'Dihasilkan' : 'Generated'}</dt>
-                  <dd className="text-sm font-semibold text-on-surface">{generatedAt}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-surface-container-low px-4 py-3">
-                  <dt className="text-sm text-on-surface-variant">{locale === 'id' ? 'ID Objective' : 'Objective ID'}</dt>
-                  <dd className="max-w-[180px] truncate text-sm font-semibold text-on-surface">{String(params.id)}</dd>
+                  <dd className="max-w-[180px] truncate text-sm font-semibold text-on-surface">{projectName}</dd>
                 </div>
               </dl>
             </div>

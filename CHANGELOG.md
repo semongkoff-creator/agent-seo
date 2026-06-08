@@ -2,6 +2,11 @@
 
 ## 2026-06-08
 
+- Restructured the objective detail page into 3 pillars: Technical, Content & Keyword, and Business Impact.
+- Added a shared technical error hook for cross-page checklist sync between Diagnosis and Objective pages.
+- Added new pillar components and helper utilities under `app/(app)/objective/[id]/pillars/`.
+- Added a compact objective header with overall progress, diagnosis reference, and quick actions.
+- Removed the old generic objective sections and shifted risk notes into a compact sidebar card.
 - Restructured the diagnosis page into Technical Issue, Keyword Position, AI Overview, and Business Impact sections.
 - Added a technical error patch endpoint for checklist status updates.
 - Added mock data helpers for keyword positions, AI visibility, and keyword owning counters.
