@@ -2,6 +2,12 @@
 
 ## 2026-06-08
 
+- Restructured the diagnosis page into Technical Issue, Keyword Position, AI Overview, and Business Impact sections.
+- Added a technical error patch endpoint for checklist status updates.
+- Added mock data helpers for keyword positions, AI visibility, and keyword owning counters.
+- Added diagnosis dashboard hooks for technical errors, AI metrics, GA4 metrics, GSC keywords, and keyword owning.
+- Added a new diagnosis dashboard header with technical health and AI visibility scores.
+- Kept the existing pending/failed diagnosis states intact while replacing the completed-state report viewer.
 - Updated the Create Project modal/form to use dropdowns for industry, audience, and main goal.
 - Added default target location `Indonesia`.
 - Added `Other (specify)` inputs for industry, audience, and product/service.

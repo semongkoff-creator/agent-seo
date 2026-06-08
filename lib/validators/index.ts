@@ -7,3 +7,4 @@ export * from './api-keys';
 export * from './dashboard';
 export * from './tasks';
 export * from './webhooks';
+export * from './technical-errors';

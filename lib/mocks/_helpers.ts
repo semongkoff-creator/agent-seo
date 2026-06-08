@@ -28,6 +28,8 @@ export function fallbackGA4Data(projectId: string): GA4MockData {
   const session = 1200 + (seed % 800);
   const pageView = Math.round(session * (1.7 + (seed % 4) * 0.1));
   const engagementRate = 45 + (seed % 20);
+  const bounceRate = 35 + (seed % 25);
+  const conversionRate = Number((1.6 + (seed % 12) * 0.2).toFixed(1));
   const visitorTotal = 900 + (seed % 700);
   const returning = Math.round(visitorTotal * 0.28);
   const newVisitors = visitorTotal - returning;
@@ -45,6 +47,8 @@ export function fallbackGA4Data(projectId: string): GA4MockData {
       value: engagementRate,
       benchmark: 50 + (seed % 8)
     },
+    bounceRate,
+    conversionRate,
     visitor: {
       total: visitorTotal,
       new: newVisitors,
@@ -57,7 +61,7 @@ export function fallbackTechnicalErrors(projectId: string): TechnicalErrorRecord
   const seed = hashSeed(projectId);
   const sources = ['GSC', 'Crawler', 'Manual Audit'];
   const severities = ['low', 'medium', 'high', 'critical'] as const;
-  const statuses = ['open', 'investigating', 'fixed'] as const;
+  const statuses = ['open', 'in_progress', 'fixed'] as const;
 
   return [0, 1, 2, 3].map((index) => {
     const severity = severities[(seed + index) % severities.length];

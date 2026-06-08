@@ -42,6 +42,8 @@ export async function getGA4MockData(projectId: string): Promise<GA4MockData> {
             value: toNumber(engagementMetric.value ?? engagementMetric.engagement_rate ?? 0, 0),
             benchmark: toNumber(engagementMetric.benchmark ?? 0, 0)
           },
+          bounceRate: toNumber(engagementMetric.bounce_rate ?? engagementMetric.bounceRate ?? 0, 0) || undefined,
+          conversionRate: toNumber(engagementMetric.conversion_rate ?? engagementMetric.conversionRate ?? 0, 0) || undefined,
           visitor: {
             total: toNumber(visitorMetric.total ?? 0, 0),
             new: toNumber(visitorMetric.new ?? visitorMetric.new_visitors ?? 0, 0),

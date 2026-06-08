@@ -30,31 +30,38 @@ export function ErrorDetailModal({
   error: TechnicalErrorRecord | null;
   onClose: () => void;
 }) {
-  return (
-    <dialog
-      open={Boolean(error)}
-      className="w-[min(96vw,960px)] rounded-[32px] border border-outline-variant bg-surface-container-lowest p-0 shadow-2xl backdrop:bg-black/50"
-      onClose={onClose}
-    >
-      <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4 md:px-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Technical Error Detail</p>
-          <h3 className="mt-1 text-xl font-semibold text-on-surface">
-            {error?.errorType ?? 'Error detail'}
-          </h3>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low"
-          aria-label="Close modal"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+  if (!error) {
+    return null;
+  }
 
-      <div className="max-h-[80vh] overflow-y-auto p-5 md:p-6">
-        {error ? (
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-4 sm:items-center sm:py-8">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Close dialog overlay"
+        onClick={onClose}
+      />
+
+      <div className="relative z-10 w-[min(96vw,960px)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border border-outline-variant bg-surface-container-lowest shadow-2xl sm:max-h-[calc(100vh-4rem)]">
+        <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4 md:px-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+              Technical Error Detail
+            </p>
+            <h3 className="mt-1 text-xl font-semibold text-on-surface">{error.errorType}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            aria-label="Close modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-5 md:p-6">
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
               <span className="rounded-full bg-surface-container px-3 py-1">{error.source}</span>
@@ -79,7 +86,12 @@ export function ErrorDetailModal({
                 <h4 className="text-sm font-semibold text-on-surface">Screenshots</h4>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {error.screenshots.map((url) => (
-                    <img key={url} src={url} alt="Error screenshot" className="rounded-2xl border border-outline-variant bg-white" />
+                    <img
+                      key={url}
+                      src={url}
+                      alt="Error screenshot"
+                      className="rounded-2xl border border-outline-variant bg-white"
+                    />
                   ))}
                 </div>
               </section>
@@ -90,8 +102,8 @@ export function ErrorDetailModal({
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">{getRecommendedFix(error.errorType)}</p>
             </section>
           </div>
-        ) : null}
+        </div>
       </div>
-    </dialog>
+    </div>
   );
 }

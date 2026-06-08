@@ -4,7 +4,7 @@ import type { TechnicalErrorRecord } from '@/types/wizard';
 import { fallbackTechnicalErrors, parseStringArray, toNumber } from './_helpers';
 
 const severityValues = ['low', 'medium', 'high', 'critical'] as const;
-const statusValues = ['open', 'investigating', 'fixed'] as const;
+const statusValues = ['open', 'in_progress', 'fixed'] as const;
 
 function toSeverity(value: unknown): TechnicalErrorRecord['severity'] {
   if (typeof value === 'string' && severityValues.includes(value as TechnicalErrorRecord['severity'])) {

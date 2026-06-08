@@ -49,6 +49,8 @@ export type GA4MockData = {
     value: number;
     benchmark: number;
   };
+  bounceRate?: number;
+  conversionRate?: number;
   visitor: {
     total: number;
     new: number;
@@ -57,7 +59,7 @@ export type GA4MockData = {
 };
 
 export type TechnicalErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type TechnicalErrorStatus = 'open' | 'investigating' | 'fixed';
+export type TechnicalErrorStatus = 'open' | 'in_progress' | 'fixed';
 
 export type TechnicalErrorRecord = {
   id: string;
@@ -68,6 +70,34 @@ export type TechnicalErrorRecord = {
   status: TechnicalErrorStatus;
   affectedUrls: string[];
   screenshots: string[];
+};
+
+export type KeywordPositionTrend = 'up' | 'down' | 'flat' | 'new';
+export type KeywordPositionRecord = {
+  id: string;
+  keyword: string;
+  position: number;
+  urlRanking: string;
+  searchVolume: number;
+  trend: KeywordPositionTrend;
+};
+
+export type AIVisibilityEngine = 'gemini' | 'chatgpt';
+export type AIVisibilityRecord = {
+  id: string;
+  engine: AIVisibilityEngine;
+  keyword: string;
+  visibilityScore: number;
+  detectionRate: number;
+  top3Visibility: number;
+  avgPosition: number;
+  citationData: Record<string, unknown>;
+};
+
+export type KeywordOwningRecord = {
+  total: number;
+  top10: number;
+  top3: number;
 };
 
 export type MainBusinessGoalOption = {
