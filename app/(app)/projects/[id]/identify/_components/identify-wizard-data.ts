@@ -53,16 +53,15 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
     step: 2,
     eyebrow: 'Website Snapshot',
     title: 'Describe the live SEO footprint',
-    description: 'This helps us decide whether we should analyze from scratch or from live signals.',
+    description: 'This helps us decide whether we should analyze a new or existing website with live signals.',
     fields: [
       {
         name: 'website_stage',
-        label: 'Website Stage',
+        label: 'Staging Website',
         type: 'radio',
         options: [
-          { label: 'From scratch', value: 'from_scratch' },
-          { label: 'New website', value: 'new' },
-          { label: 'Existing website', value: 'existing' }
+          { label: 'New Website', value: 'new' },
+          { label: 'Existing Website', value: 'existing' }
         ]
       },
       {
@@ -86,14 +85,6 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
           { label: 'Decreasing', value: 'decreasing' },
           { label: 'Not sure yet', value: '' }
         ]
-      },
-      { name: 'indexed_pages', label: 'Indexed Pages', type: 'number', placeholder: '0' },
-      { name: 'published_pages', label: 'Published Pages', type: 'number', placeholder: '0' },
-      {
-        name: 'main_seo_concern',
-        label: 'Main SEO Concern',
-        type: 'textarea',
-        placeholder: 'Traffic is flat even though content is being published consistently.'
       }
     ]
   },
@@ -111,12 +102,7 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
         placeholder: 'User-agent: *\nDisallow: /admin/'
       },
       { name: 'crawl_errors_count', label: 'Crawl Errors Count', type: 'number', placeholder: '0' },
-      { name: 'core_web_vitals_pass', label: 'Core Web Vitals Pass', type: 'boolean' },
-      { name: 'mobile_usability_issues', label: 'Mobile Usability Issues', type: 'boolean' },
-      { name: 'has_redirect_errors', label: 'Redirect Errors', type: 'boolean' },
-      { name: 'has_4xx_5xx_errors', label: '4xx / 5xx Errors', type: 'boolean' },
-      { name: 'canonical_issues', label: 'Canonical Issues', type: 'boolean' },
-      { name: 'noindex_issues', label: 'Noindex Issues', type: 'boolean' }
+      { name: 'core_web_vitals_pass', label: 'Core Web Vitals Pass', type: 'boolean' }
     ]
   },
   4: {
@@ -286,7 +272,8 @@ export function buildStepState(step: IdentifyStepNumber, source: Record<string, 
   }
 
   if (step === 2) {
-    state.website_stage = typeof source.website_stage === 'string' ? source.website_stage : 'existing';
+    const websiteStage = typeof source.website_stage === 'string' ? source.website_stage : 'existing';
+    state.website_stage = websiteStage === 'from_scratch' ? 'new' : websiteStage;
     const trend = typeof source.organic_traffic_trend === 'string' ? source.organic_traffic_trend : '';
     const legacyTrendMap: Record<string, string> = {
       growing: 'increasing',

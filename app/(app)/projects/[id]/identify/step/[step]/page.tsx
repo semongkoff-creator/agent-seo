@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
+import { getGA4MockData } from '@/lib/mocks/ga4';
+import { getGSCMockData } from '@/lib/mocks/gsc';
+import { getTechnicalErrors } from '@/lib/mocks/technical-errors';
 import { getIdentifyDraft } from '@/lib/services/identify';
 import { getProject } from '@/lib/services/projects';
 import { identifyStepNumberSchema } from '@/lib/validators/identify';
@@ -22,7 +25,12 @@ export default async function IdentifyStepPage({ params }: PageParams) {
   const project = await getProject(user.id, params.id);
   const projectRecord = project as Record<string, unknown>;
   const parsedStep = identifyStepNumberSchema.parse(params.step) as IdentifyStepNumber;
-  const draftResult = await getIdentifyDraft(user.id, params.id);
+  const [draftResult, gscData, ga4Data, technicalErrors] = await Promise.all([
+    getIdentifyDraft(user.id, params.id),
+    getGSCMockData(params.id),
+    getGA4MockData(params.id),
+    getTechnicalErrors(params.id)
+  ]);
   const mergedDrafts = mergeDraftItems(draftResult.items as Array<Record<string, unknown>>);
   const seedState = {
     ...mergedDrafts,
@@ -54,6 +62,9 @@ export default async function IdentifyStepPage({ params }: PageParams) {
       projectUrl={typeof projectRecord.website_url === 'string' && projectRecord.website_url ? projectRecord.website_url : 'Website not provided'}
       currentStep={parsedStep}
       initialDrafts={seedState}
+      gscData={gscData}
+      ga4Data={ga4Data}
+      technicalErrors={technicalErrors}
     />
   );
 }

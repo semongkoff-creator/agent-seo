@@ -38,7 +38,15 @@ export const objectiveInputSchema = z
   .object({
     business_goal: z
       .object({
-        main_business_goal: z.enum(['traffic', 'leads', 'sales', 'revenue', 'awareness', 'local_visibility']),
+        main_business_goal: z.enum([
+          'traffic',
+          'leads',
+          'keyword_position',
+          'sales',
+          'revenue',
+          'awareness',
+          'local_visibility'
+        ]),
         business_target_value: optionalTextSchema,
         target_period: targetPeriodSchema.optional(),
         priority_product_or_service: optionalTextSchema,

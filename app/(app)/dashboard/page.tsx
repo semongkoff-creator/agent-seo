@@ -23,6 +23,7 @@ import { getDashboardOverview, listDashboardInsights } from '@/lib/services/dash
 import { listDiagnoses } from '@/lib/services/diagnoses';
 import { listProjects } from '@/lib/services/projects';
 import { formatWibDateTime } from '@/lib/time';
+import { formatBusinessGoalLabel } from '@/types/wizard';
 
 type ProjectRowData = {
   id: string;
@@ -271,7 +272,7 @@ function mapProjectRows(source: Awaited<ReturnType<typeof listProjects>>['items'
     const id = String(record.id ?? '');
     const name = typeof record.name === 'string' && record.name ? record.name : `Project ${index + 1}`;
     const industry = typeof record.industry === 'string' && record.industry ? record.industry : 'Uncategorized';
-    const goal = typeof record.main_business_goal === 'string' ? record.main_business_goal : 'n/a';
+    const goal = formatBusinessGoalLabel(record.main_business_goal);
     const status = typeof record.status === 'string' ? record.status : 'active';
     const currentStep = typeof record.current_step === 'number' ? record.current_step : index + 1;
 

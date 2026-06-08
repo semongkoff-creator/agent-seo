@@ -5,6 +5,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { requireUser } from '@/lib/auth/session';
 import { getDashboardOverview } from '@/lib/services/dashboard';
 import { listProjects } from '@/lib/services/projects';
+import { formatBusinessGoalLabel } from '@/types/wizard';
 
 function toText(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value : fallback;
@@ -63,7 +64,7 @@ export default async function CampaignsPage() {
               const record = project as Record<string, unknown>;
               const projectId = String(record.id);
               const projectName = toText(record.name, 'Project');
-              const goal = toText(record.main_business_goal, 'seo');
+              const goal = formatBusinessGoalLabel(record.main_business_goal);
               const stage = toText(record.website_stage, 'active');
               const step = typeof record.current_step === 'number' ? record.current_step : 1;
 

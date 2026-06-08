@@ -18,6 +18,11 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { objectiveInputSchema, type ObjectiveInput } from '@/lib/validators/objectives';
+import {
+  formatBusinessGoalLabel,
+  MAIN_BUSINESS_GOAL_OPTIONS,
+  normalizeBusinessGoalValue
+} from '@/types/wizard';
 
 type ObjectiveBuilderProps = {
   projectId: string;
@@ -35,38 +40,39 @@ type ObjectiveBuilderProps = {
 
 type DraftState = Record<string, unknown>;
 
-const BUSINESS_GOALS = [
-  {
-    value: 'traffic',
-    label: 'Increase Organic Traffic',
-    desc: 'Lebih banyak pengunjung organik',
-    icon: '📈'
-  },
-  {
-    value: 'leads',
-    label: 'Generate More Leads',
+type BusinessGoalCard = {
+  value: (typeof MAIN_BUSINESS_GOAL_OPTIONS)[number]['value'];
+  label: string;
+  desc: string;
+  icon: string;
+};
+
+const BUSINESS_GOALS: BusinessGoalCard[] = MAIN_BUSINESS_GOAL_OPTIONS.map((option) => {
+  if (option.value === 'traffic') {
+    return {
+      value: option.value,
+      label: option.label,
+      desc: 'More organic visitors',
+      icon: '📈'
+    };
+  }
+
+  if (option.value === 'keyword_position') {
+    return {
+      value: option.value,
+      label: option.label,
+      desc: 'Improve rankings for priority keywords',
+      icon: '🎯'
+    };
+  }
+
+  return {
+    value: option.value,
+    label: option.label,
     desc: 'Form submissions and contact requests',
     icon: '👥'
-  },
-  {
-    value: 'sales',
-    label: 'Drive Online Sales',
-    desc: 'E-commerce conversions and transactions',
-    icon: '🛒'
-  },
-  {
-    value: 'awareness',
-    label: 'Brand Awareness',
-    desc: 'Visibility, mentions, branded search',
-    icon: '📣'
-  },
-  {
-    value: 'local_visibility',
-    label: 'Local Visibility',
-    desc: 'Local search rankings and store visits',
-    icon: '📍'
-  }
-] as const;
+  };
+});
 
 const TARGET_PERIODS = ['3 months', '6 months', '9 months', '12 months'] as const;
 const BUDGET_LEVELS = [
@@ -113,8 +119,8 @@ function toNumber(value: unknown) {
 
 function normalizeDraft(input: Partial<ObjectiveInput>): DraftState {
   return {
-    business_goal: {
-      main_business_goal: input.business_goal?.main_business_goal ?? 'leads',
+      business_goal: {
+      main_business_goal: normalizeBusinessGoalValue(input.business_goal?.main_business_goal ?? 'leads'),
       business_target_value: input.business_goal?.business_target_value ?? '',
       target_period: input.business_goal?.target_period ?? '6 months',
       priority_product_or_service: input.business_goal?.priority_product_or_service ?? '',
@@ -194,7 +200,7 @@ function buildObjectivePreview(state: DraftState, projectName: string, diagnosis
   const ctr = toNumber(baseline.current_ctr);
 
   return {
-    headline: `Increase ${toText(business.main_business_goal, 'leads')} for ${product} in ${market} within ${period}.`,
+    headline: `Increase ${formatBusinessGoalLabel(business.main_business_goal)} for ${product} in ${market} within ${period}.`,
     summary: `Use the diagnosis direction to move from ${traffic || 'current'} monthly traffic and ${ctr || 'current'} CTR toward ${targetValue}.`,
     direction: diagnosisDirection
   };
@@ -590,7 +596,7 @@ export function ObjectiveBuilder({
                   {BUSINESS_GOALS.map((goal) => (
                     <ChoiceChip
                       key={goal.value}
-                      selected={toText(businessGoal.main_business_goal, 'leads') === goal.value}
+                      selected={normalizeBusinessGoalValue(businessGoal.main_business_goal) === goal.value}
                       label={goal.label}
                       desc={goal.desc}
                       icon={goal.icon}

@@ -3,7 +3,14 @@ import { paginationSchema, uuidSchema } from './common';
 
 export const projectStatusSchema = z.enum(['active', 'archived']);
 export const websiteStageSchema = z.enum(['from_scratch', 'new', 'existing']);
-export const businessGoalSchema = z.enum(['traffic', 'leads', 'sales', 'awareness', 'local_visibility']);
+export const businessGoalSchema = z.enum([
+  'traffic',
+  'leads',
+  'keyword_position',
+  'sales',
+  'awareness',
+  'local_visibility'
+]);
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1).max(120),

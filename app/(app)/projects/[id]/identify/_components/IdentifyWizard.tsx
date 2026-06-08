@@ -15,6 +15,11 @@ import {
   Sparkles,
   TerminalSquare
 } from 'lucide-react';
+import { GA4MetricsCard } from '@/components/wizard/GA4MetricsCard';
+import { ErrorCardsGrid } from '@/components/wizard/ErrorCardsGrid';
+import { ErrorDetailModal } from '@/components/wizard/ErrorDetailModal';
+import { GSCConnectionStatus } from '@/components/wizard/GSCConnectionStatus';
+import type { GA4MockData, GSCMockData, TechnicalErrorRecord } from '@/types/wizard';
 import {
   buildStepState,
   identifyStepConfigs,
@@ -30,6 +35,9 @@ type IdentifyWizardProps = {
   projectUrl: string;
   currentStep: IdentifyStepNumber;
   initialDrafts: Record<string, unknown>;
+  gscData: GSCMockData;
+  ga4Data: GA4MockData;
+  technicalErrors: TechnicalErrorRecord[];
 };
 
 type FieldState = Record<string, unknown>;
@@ -42,10 +50,18 @@ function normalizeForKey(step: IdentifyStepNumber) {
   return `step-${step}`;
 }
 
+function buildDerivedUrl(projectUrl: string, path: '/sitemap.xml' | '/robots.txt') {
+  try {
+    const url = new URL(projectUrl);
+    return new URL(path, url.origin).toString();
+  } catch {
+    return `https://yourdomain.com${path}`;
+  }
+}
+
 function optionHint(value: string) {
   const hints: Record<string, string> = {
-    from_scratch: 'No live site yet, we will shorten the flow.',
-    new: 'Live but still early, with thin SEO data.',
+    new: 'A new site with limited live signals.',
     existing: 'We can pull live signals from an active site.',
     weak: 'CTA is unclear or not compelling yet.',
     medium: 'CTA is usable but could be sharper.',
@@ -190,12 +206,24 @@ export function IdentifyWizard({
   projectName,
   projectUrl,
   currentStep,
-  initialDrafts
+  initialDrafts,
+  gscData,
+  ga4Data,
+  technicalErrors
 }: IdentifyWizardProps) {
   const router = useRouter();
   const config = identifyStepConfigs[currentStep];
   const stepData = useMemo(() => buildStepState(currentStep, initialDrafts), [currentStep, initialDrafts]);
   const [formState, setFormState] = useState<FieldState>(() => stepData);
+  const [sitemapMode, setSitemapMode] = useState<'auto' | 'manual'>(() => {
+    const value = typeof stepData.sitemap_url === 'string' ? stepData.sitemap_url : '';
+    return value === buildDerivedUrl(projectUrl, '/sitemap.xml') ? 'auto' : 'manual';
+  });
+  const [robotsMode, setRobotsMode] = useState<'auto' | 'manual'>(() => {
+    const value = typeof stepData.robots_txt === 'string' ? stepData.robots_txt : '';
+    return value === buildDerivedUrl(projectUrl, '/robots.txt') ? 'auto' : 'manual';
+  });
+  const [selectedErrorId, setSelectedErrorId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -208,6 +236,17 @@ export function IdentifyWizard({
   useEffect(() => {
     setFormState(stepData);
   }, [stepData]);
+
+  useEffect(() => {
+    if (currentStep !== 3) {
+      return;
+    }
+
+    const sitemapValue = typeof stepData.sitemap_url === 'string' ? stepData.sitemap_url : '';
+    const robotsValue = typeof stepData.robots_txt === 'string' ? stepData.robots_txt : '';
+    setSitemapMode(sitemapValue === buildDerivedUrl(projectUrl, '/sitemap.xml') ? 'auto' : 'manual');
+    setRobotsMode(robotsValue === buildDerivedUrl(projectUrl, '/robots.txt') ? 'auto' : 'manual');
+  }, [currentStep, projectUrl, stepData]);
 
   useEffect(() => {
     hasMounted.current = true;
@@ -300,12 +339,18 @@ export function IdentifyWizard({
   const currentIndex = stepProgress.indexOf(currentStep) + 1;
 
   const currentValues = formState;
+  const selectedError = technicalErrors.find((item) => item.id === selectedErrorId) ?? null;
 
   function updateField(name: string, value: unknown) {
     setFormState((current) => ({
       ...current,
       [name]: value
     }));
+  }
+
+  function setAutoValue(fieldName: string, value: string, modeSetter: (mode: 'auto' | 'manual') => void) {
+    updateField(fieldName, value);
+    modeSetter('auto');
   }
 
   return (
@@ -431,6 +476,130 @@ export function IdentifyWizard({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {config.fields.map((field) => {
+                if (currentStep === 3 && field.name === 'sitemap_url') {
+                  const sitemapUrl = String(currentValues[field.name] ?? '');
+                  return (
+                    <div key={field.name} className="md:col-span-2 rounded-2xl border border-outline-variant bg-white p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                            Sitemap URL
+                          </div>
+                          <p className="mt-1 text-sm text-on-surface-variant">
+                            Auto mode keeps this synchronized with the website domain.
+                          </p>
+                        </div>
+                        <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAutoValue('sitemap_url', buildDerivedUrl(projectUrl, '/sitemap.xml'), setSitemapMode);
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                              sitemapMode === 'auto'
+                                ? 'bg-primary text-on-primary'
+                                : 'text-on-surface-variant hover:bg-white'
+                            )}
+                          >
+                            Auto-detected
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSitemapMode('manual')}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                              sitemapMode === 'manual'
+                                ? 'bg-primary text-on-primary'
+                                : 'text-on-surface-variant hover:bg-white'
+                            )}
+                          >
+                            Edit manually
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={sitemapMode === 'auto' ? buildDerivedUrl(projectUrl, '/sitemap.xml') : sitemapUrl}
+                        onChange={(event) => {
+                          updateField(field.name, event.target.value);
+                          setSitemapMode('manual');
+                        }}
+                        disabled={sitemapMode === 'auto'}
+                        placeholder="https://yourdomain.com/sitemap.xml"
+                        className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
+                      />
+                      {sitemapMode === 'auto' ? (
+                        <p className="mt-2 text-xs text-on-surface-variant">
+                          The system will crawl your sitemap automatically from the website URL.
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                }
+
+                if (currentStep === 3 && field.name === 'robots_txt') {
+                  const robotsTxt = String(currentValues[field.name] ?? '');
+                  return (
+                    <div key={field.name} className="md:col-span-2 rounded-2xl border border-outline-variant bg-white p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                            robots.txt
+                          </div>
+                          <p className="mt-1 text-sm text-on-surface-variant">
+                            Auto mode keeps this synchronized with the website domain.
+                          </p>
+                        </div>
+                        <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAutoValue('robots_txt', buildDerivedUrl(projectUrl, '/robots.txt'), setRobotsMode);
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                              robotsMode === 'auto'
+                                ? 'bg-primary text-on-primary'
+                                : 'text-on-surface-variant hover:bg-white'
+                            )}
+                          >
+                            Auto-detected
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRobotsMode('manual')}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                              robotsMode === 'manual'
+                                ? 'bg-primary text-on-primary'
+                                : 'text-on-surface-variant hover:bg-white'
+                            )}
+                          >
+                            Edit manually
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={robotsMode === 'auto' ? buildDerivedUrl(projectUrl, '/robots.txt') : robotsTxt}
+                        onChange={(event) => {
+                          updateField(field.name, event.target.value);
+                          setRobotsMode('manual');
+                        }}
+                        disabled={robotsMode === 'auto'}
+                        placeholder="https://yourdomain.com/robots.txt"
+                        className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
+                      />
+                      {robotsMode === 'auto' ? (
+                        <p className="mt-2 text-xs text-on-surface-variant">
+                          The system will crawl your robots file automatically from the website URL.
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                }
+
                 if (field.type === 'textarea') {
                   return (
                     <label key={field.name} className="md:col-span-2">
@@ -538,6 +707,20 @@ export function IdentifyWizard({
                 );
               })}
             </div>
+
+            {currentStep === 2 ? (
+              <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <GSCConnectionStatus data={gscData} />
+                <GA4MetricsCard data={ga4Data} />
+              </div>
+            ) : null}
+
+            {currentStep === 3 ? (
+              <div className="mt-5 space-y-4">
+                <ErrorCardsGrid errors={technicalErrors} onSelect={(item) => setSelectedErrorId(item.id)} />
+                <ErrorDetailModal error={selectedError} onClose={() => setSelectedErrorId(null)} />
+              </div>
+            ) : null}
 
             {error ? (
               <p className="mt-5 rounded-2xl border border-error/30 bg-error-container/20 px-4 py-3 text-sm text-on-error-container">

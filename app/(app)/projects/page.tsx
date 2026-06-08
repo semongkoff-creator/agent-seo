@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth/session';
 import { getAppCopy, getLocaleFromValue, LOCALE_COOKIE } from '@/lib/i18n';
 import { listProjects } from '@/lib/services/projects';
 import { formatWibDate } from '@/lib/time';
+import { formatBusinessGoalLabel } from '@/types/wizard';
 
 function formatProjectUrl(record: Record<string, unknown>) {
   return typeof record.website_url === 'string' && record.website_url ? record.website_url : 'Website not provided';
@@ -86,8 +87,7 @@ export default async function ProjectsPage() {
               const status = typeof record.status === 'string' ? record.status : 'active';
               const currentStep = typeof record.current_step === 'number' ? record.current_step : 1;
               const updatedAt = typeof record.updated_at === 'string' ? formatWibDate(record.updated_at) : 'Recently';
-              const keywords =
-                typeof record.main_business_goal === 'string' ? record.main_business_goal : 'SEO coverage';
+              const keywords = formatBusinessGoalLabel(record.main_business_goal);
               const projectId = String(record.id);
               const stage = typeof record.website_stage === 'string' ? record.website_stage : 'active';
 

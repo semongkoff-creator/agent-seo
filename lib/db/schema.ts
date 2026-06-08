@@ -20,6 +20,7 @@ export const websiteStageEnum = pgEnum('website_stage', ['from_scratch', 'new', 
 export const businessGoalEnum = pgEnum('business_goal', [
   'traffic',
   'leads',
+  'keyword_position',
   'sales',
   'awareness',
   'local_visibility'

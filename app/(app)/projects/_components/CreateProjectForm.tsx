@@ -3,28 +3,60 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowRight, Loader2, Plus } from 'lucide-react';
+import {
+  AUDIENCE_OPTIONS,
+  formatBusinessGoalLabel,
+  INDUSTRY_OPTIONS,
+  MAIN_BUSINESS_GOAL_OPTIONS,
+  PRODUCT_OPTIONS,
+  type AudienceValue,
+  type IndustryValue,
+  type MainBusinessGoalValue
+} from '@/types/wizard';
 
 type ProjectFormState = {
   name: string;
   websiteUrl: string;
-  industry: string;
+  industry: IndustryValue | '';
+  industryOther: string;
   targetLocation: string;
-  targetAudience: string;
+  targetAudience: AudienceValue | '';
+  targetAudienceOther: string;
   mainProductOrService: string;
-  websiteStage: 'from_scratch' | 'new' | 'existing';
-  mainBusinessGoal: 'traffic' | 'leads' | 'sales' | 'awareness' | 'local_visibility';
+  mainProductOrServiceOther: string;
+  websiteStage: 'new' | 'existing';
+  mainBusinessGoal: MainBusinessGoalValue;
 };
 
 const initialState: ProjectFormState = {
   name: '',
   websiteUrl: '',
   industry: '',
-  targetLocation: '',
+  industryOther: '',
+  targetLocation: 'Indonesia',
   targetAudience: '',
+  targetAudienceOther: '',
   mainProductOrService: '',
+  mainProductOrServiceOther: '',
   websiteStage: 'existing',
   mainBusinessGoal: 'leads'
 };
+
+function getSelectedOptionLabel(options: Array<{ value: string; label: string }>, value: string) {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function getProductOptions(industry: ProjectFormState['industry']) {
+  if (!industry) {
+    return [];
+  }
+
+  if (industry === 'other') {
+    return PRODUCT_OPTIONS.default;
+  }
+
+  return PRODUCT_OPTIONS[industry] ?? PRODUCT_OPTIONS.default;
+}
 
 export function CreateProjectForm() {
   const router = useRouter();
@@ -35,6 +67,32 @@ export function CreateProjectForm() {
 
   function updateField<K extends keyof ProjectFormState>(key: K, value: ProjectFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleIndustryChange(nextIndustry: ProjectFormState['industry']) {
+    setForm((current) => ({
+      ...current,
+      industry: nextIndustry,
+      industryOther: nextIndustry === 'other' ? current.industryOther : '',
+      mainProductOrService: '',
+      mainProductOrServiceOther: ''
+    }));
+  }
+
+  function handleAudienceChange(nextAudience: ProjectFormState['targetAudience']) {
+    setForm((current) => ({
+      ...current,
+      targetAudience: nextAudience,
+      targetAudienceOther: nextAudience === 'other' ? current.targetAudienceOther : ''
+    }));
+  }
+
+  function handleMainProductChange(nextValue: string) {
+    setForm((current) => ({
+      ...current,
+      mainProductOrService: nextValue,
+      mainProductOrServiceOther: nextValue === 'other' ? current.mainProductOrServiceOther : ''
+    }));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -52,10 +110,25 @@ export function CreateProjectForm() {
         body: JSON.stringify({
           name: form.name,
           websiteUrl: form.websiteUrl,
-          industry: form.industry || undefined,
-          targetLocation: form.targetLocation || undefined,
-          targetAudience: form.targetAudience || undefined,
-          mainProductOrService: form.mainProductOrService || undefined,
+          industry:
+            form.industry === 'other'
+              ? form.industryOther.trim() || undefined
+              : form.industry
+                ? getSelectedOptionLabel(INDUSTRY_OPTIONS, form.industry)
+                : undefined,
+          targetLocation: form.targetLocation.trim() || undefined,
+          targetAudience:
+            form.targetAudience === 'other'
+              ? form.targetAudienceOther.trim() || undefined
+              : form.targetAudience
+                ? getSelectedOptionLabel(AUDIENCE_OPTIONS, form.targetAudience)
+                : undefined,
+          mainProductOrService:
+            form.mainProductOrService === 'other'
+              ? form.mainProductOrServiceOther.trim() || undefined
+              : form.mainProductOrService
+                ? getSelectedOptionLabel(getProductOptions(form.industry), form.mainProductOrService)
+                : undefined,
           websiteStage: form.websiteStage,
           mainBusinessGoal: form.mainBusinessGoal
         })
@@ -118,12 +191,27 @@ export function CreateProjectForm() {
         </label>
         <label className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Industry</span>
-          <input
+          <select
             value={form.industry}
-            onChange={(event) => updateField('industry', event.target.value)}
+            onChange={(event) => handleIndustryChange(event.target.value as ProjectFormState['industry'])}
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="SaaS / Software"
-          />
+          >
+            <option value="">Select industry</option>
+            {INDUSTRY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {form.industry === 'other' ? (
+            <input
+              required
+              value={form.industryOther}
+              onChange={(event) => updateField('industryOther', event.target.value)}
+              className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Specify industry"
+            />
+          ) : null}
         </label>
         <label className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
@@ -133,31 +221,63 @@ export function CreateProjectForm() {
             value={form.targetLocation}
             onChange={(event) => updateField('targetLocation', event.target.value)}
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="Jakarta, Indonesia"
+            placeholder="Indonesia"
           />
         </label>
         <label className="flex flex-col gap-2 md:col-span-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
             Target Audience
           </span>
-          <input
+          <select
             value={form.targetAudience}
-            onChange={(event) => updateField('targetAudience', event.target.value)}
+            onChange={(event) => handleAudienceChange(event.target.value as ProjectFormState['targetAudience'])}
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="Founders, marketers, and operators who need better SEO visibility."
-          />
+          >
+            <option value="">Select audience</option>
+            {AUDIENCE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {form.targetAudience === 'other' ? (
+            <input
+              required
+              value={form.targetAudienceOther}
+              onChange={(event) => updateField('targetAudienceOther', event.target.value)}
+              className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Specify audience"
+            />
+          ) : null}
         </label>
         <label className="flex flex-col gap-2 md:col-span-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
             Main Product or Service
           </span>
-          <textarea
-            rows={3}
+          <select
             value={form.mainProductOrService}
-            onChange={(event) => updateField('mainProductOrService', event.target.value)}
-            className="rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="Managed SEO audits, content strategy, and technical fixes"
-          />
+            onChange={(event) => handleMainProductChange(event.target.value)}
+            disabled={!form.industry}
+            className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">
+              {form.industry ? 'Select product or service' : 'Select industry first'}
+            </option>
+            {getProductOptions(form.industry).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {form.mainProductOrService === 'other' ? (
+            <input
+              required
+              value={form.mainProductOrServiceOther}
+              onChange={(event) => updateField('mainProductOrServiceOther', event.target.value)}
+              className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Specify product or service"
+            />
+          ) : null}
         </label>
         <label className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">Website Stage</span>
@@ -166,9 +286,8 @@ export function CreateProjectForm() {
             onChange={(event) => updateField('websiteStage', event.target.value as ProjectFormState['websiteStage'])}
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
-            <option value="from_scratch">From Scratch</option>
-            <option value="new">New</option>
-            <option value="existing">Existing</option>
+            <option value="new">New Website</option>
+            <option value="existing">Existing Website</option>
           </select>
         </label>
         <label className="flex flex-col gap-2">
@@ -180,13 +299,16 @@ export function CreateProjectForm() {
             }
             className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
-            <option value="traffic">Traffic</option>
-            <option value="leads">Leads</option>
-            <option value="sales">Sales</option>
-            <option value="awareness">Awareness</option>
-            <option value="local_visibility">Local Visibility</option>
+            {MAIN_BUSINESS_GOAL_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant md:col-span-2">
+          Main goal preview: <span className="font-semibold text-on-surface">{formatBusinessGoalLabel(form.mainBusinessGoal)}</span>
+        </div>
       </div>
 
       {error ? (
