@@ -33,6 +33,31 @@ const businessImpactSchema = z
   })
   .passthrough();
 
+const diagnosisSectionSchema = z
+  .object({
+    summary: z.string().trim().min(1).optional(),
+    critical_issues: z.array(z.string().trim().min(1)).default([]),
+    checklist_priority: z.array(z.string().trim().min(1)).default([])
+  })
+  .passthrough();
+
+const keywordOpportunitySchema = z
+  .object({
+    keyword: z.string().trim().min(1),
+    current_position: z.number().finite(),
+    opportunity: z.string().trim().min(1)
+  })
+  .passthrough();
+
+const objectiveMetricSchema = z
+  .object({
+    label: z.string().trim().min(1),
+    current_value: z.string().trim().min(1),
+    potential_value: z.string().trim().min(1),
+    gap: z.string().trim().min(1)
+  })
+  .passthrough();
+
 export const diagnosisCompleteWebhookSchema = z
   .object({
     job_id: uuidSchema,
@@ -54,6 +79,32 @@ export const diagnosisCompleteWebhookSchema = z
         objective_direction: z.string().trim().min(1),
         not_recommended_actions: z.array(z.string().trim().min(1)).default([]),
         warnings: z.array(z.string().trim().min(1)).default([]),
+        technical_health_score: z.number().min(0).max(100).optional(),
+        ai_visibility_score: z.number().min(0).max(100).optional(),
+        technical_section: diagnosisSectionSchema.optional(),
+        keyword_section: z
+          .object({
+            summary: z.string().trim().min(1).optional(),
+            top_opportunities: z.array(keywordOpportunitySchema).default([])
+          })
+          .passthrough()
+          .optional(),
+        ai_overview_section: z
+          .object({
+            summary: z.string().trim().min(1).optional(),
+            gemini_insights: z.string().trim().min(1).optional(),
+            chatgpt_insights: z.string().trim().min(1).optional(),
+            recommendation: z.string().trim().min(1).optional()
+          })
+          .passthrough()
+          .optional(),
+        business_impact_section: z
+          .object({
+            summary: z.string().trim().min(1).optional(),
+            metrics: z.array(objectiveMetricSchema).default([])
+          })
+          .passthrough()
+          .optional(),
         raw_llm_output: z.record(z.any()).optional(),
         model_used: z.string().trim().min(1)
       })
@@ -81,8 +132,31 @@ export const objectiveCompleteWebhookSchema = z
         achievability_score: achievabilityScoreSchema.optional(),
         achievability_percent: z.number().min(0).max(100).optional(),
         risk_notes: z.array(z.string().trim().min(1)).default([]),
+        pillar: z.enum(['technical', 'content_keyword', 'business_impact']).optional(),
+        checklist_summary: z.string().trim().min(1).optional(),
+        estimated_completion: z.string().trim().min(1).optional(),
+        linked_technical_errors: z.array(z.string().trim().min(1)).default([]),
+        action_items: z.array(z.string().trim().min(1)).default([]),
+        target_metrics: z.record(z.any()).optional(),
+        roi_estimate: z.string().trim().min(1).optional(),
         reasoning: z.string().trim().min(1).optional(),
         next_step: z.string().trim().min(1).optional(),
+        objectives: z
+          .array(
+            z
+              .object({
+                pillar: z.enum(['technical', 'content_keyword', 'business_impact']),
+                smart_objective: z.string().trim().min(1),
+                checklist_summary: z.string().trim().min(1).optional(),
+                estimated_completion: z.string().trim().min(1).optional(),
+                linked_technical_errors: z.array(z.string().trim().min(1)).default([]),
+                action_items: z.array(z.string().trim().min(1)).default([]),
+                target_metrics: z.record(z.any()).optional(),
+                roi_estimate: z.string().trim().min(1).optional()
+              })
+              .passthrough()
+          )
+          .optional(),
         raw_llm_output: z.record(z.any()).optional(),
         model_used: z.string().trim().min(1)
       })

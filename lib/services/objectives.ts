@@ -167,6 +167,12 @@ export async function generateObjective(userId: string, projectId: string, input
     conflict('Run diagnosis first');
   }
 
+  const { data: technicalErrors } = await db
+    .from('technical_errors')
+    .select('id, source, error_type, error_count, severity, status, affected_urls')
+    .eq('project_id', projectId)
+    .order('severity', { ascending: false });
+
   const { data: objective, error: objectiveError } = await db
     .from('seo_objectives')
     .insert({
@@ -259,6 +265,7 @@ export async function generateObjective(userId: string, projectId: string, input
         diagnosisId: input.diagnosis_id,
         objectiveId: objective.id,
         diagnosisResult: input.diagnosis_result,
+        technicalErrors: (technicalErrors ?? []).map((error) => error as Record<string, unknown>),
         objectiveInput: {
           business_goal: input.business_goal,
           seo_baseline: input.seo_baseline,

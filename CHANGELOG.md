@@ -2,6 +2,9 @@
 
 ## 2026-06-08
 
+- Updated n8n workflow contracts for Phase 5, including V2 diagnosis sections and multi-pillar objective payload support.
+- Added backend support for V2 diagnosis/objective webhook fields and technical error context in objective generation.
+- Updated the shared n8n workflow guide to reflect the V2 diagnosis and objective orchestration flow.
 - Restructured the objective detail page into 3 pillars: Technical, Content & Keyword, and Business Impact.
 - Added a shared technical error hook for cross-page checklist sync between Diagnosis and Objective pages.
 - Added new pillar components and helper utilities under `app/(app)/objective/[id]/pillars/`.

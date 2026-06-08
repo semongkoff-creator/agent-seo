@@ -52,9 +52,12 @@ export type ObjectiveWorkflowPayload = {
     id: string;
   };
   diagnosis_result: Record<string, unknown>;
+  diagnosis_snapshot: Record<string, unknown>;
   objective_input: Record<string, unknown>;
   diagnosisResult: Record<string, unknown>;
+  diagnosisSnapshot: Record<string, unknown>;
   objectiveInput: Record<string, unknown>;
+  technical_errors?: Array<Record<string, unknown>>;
 };
 
 export type DiagnosisCompleteCallbackPayload = {
@@ -122,8 +125,23 @@ export function buildObjectiveWorkflowPayload(input: {
   objectiveId: string;
   diagnosisResult: Record<string, unknown>;
   objectiveInput: Record<string, unknown>;
+  technicalErrors?: Array<Record<string, unknown>>;
   submittedAt?: string;
 }): ObjectiveWorkflowPayload {
+  const diagnosisSnapshot = {
+    primary_problem_type: input.diagnosisResult.primary_problem_type,
+    severity: input.diagnosisResult.severity,
+    confidence_score: input.diagnosisResult.confidence_score,
+    diagnosis_summary: input.diagnosisResult.diagnosis_summary,
+    objective_direction: input.diagnosisResult.objective_direction,
+    technical_health_score: input.diagnosisResult.technical_health_score,
+    ai_visibility_score: input.diagnosisResult.ai_visibility_score,
+    technical_section: input.diagnosisResult.technical_section,
+    keyword_section: input.diagnosisResult.keyword_section,
+    ai_overview_section: input.diagnosisResult.ai_overview_section,
+    business_impact_section: input.diagnosisResult.business_impact_section
+  };
+
   return {
     app: 'seo-agent',
     action: 'define_objective',
@@ -146,8 +164,10 @@ export function buildObjectiveWorkflowPayload(input: {
       id: input.objectiveId
     },
     diagnosis_result: input.diagnosisResult,
+    diagnosis_snapshot: diagnosisSnapshot,
     objective_input: input.objectiveInput,
     diagnosisResult: input.diagnosisResult,
+    diagnosisSnapshot: diagnosisSnapshot,
     objectiveInput: input.objectiveInput
   };
 }

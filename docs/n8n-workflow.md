@@ -26,6 +26,14 @@ This guide matches the current SEO Agent app flow:
 
 This workflow must only do identification and diagnosis.
 It should not create the final SMART objective.
+For the V2 version, the AI result should also include:
+
+- `technical_health_score`
+- `ai_visibility_score`
+- `technical_section`
+- `keyword_section`
+- `ai_overview_section`
+- `business_impact_section`
 
 ### 1) Webhook trigger
 
@@ -62,6 +70,7 @@ Recommended setup:
 Suggested prompt behavior:
 
 - inspect `identify_drafts` and `identify_merged`
+- if available, include enriched signals from GSC, GA4, technical errors, and AI visibility
 - return a strict JSON object only
 - keep the output compatible with the backend diagnosis schema
 
@@ -138,6 +147,11 @@ Recommended body:
 
 This workflow must only do objective planning.
 It should not re-identify the problem or overwrite the diagnosis logic.
+For the V2 version, the AI result should return three pillar objectives:
+
+- `technical`
+- `content_keyword`
+- `business_impact`
 
 ### 1) Webhook trigger
 
@@ -162,6 +176,7 @@ Recommended setup:
 Suggested prompt behavior:
 
 - inspect `diagnosis_result` and `objective_input`
+- include `technical_errors` when available so the technical pillar can reference real checklist items
 - return a strict JSON object only
 - keep the output compatible with the backend objective schema
 
