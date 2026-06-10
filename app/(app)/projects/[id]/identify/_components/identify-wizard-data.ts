@@ -52,8 +52,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
   2: {
     step: 2,
     eyebrow: 'Website Snapshot',
-    title: 'Describe the live SEO footprint',
-    description: 'This helps us decide whether we should analyze a new or existing website with live signals.',
+    title: 'Confirm the website stage',
+    description: 'Live SEO signals from GSC and GA4 will be pulled automatically, so you only confirm whether this is a new or existing website.',
     fields: [
       {
         name: 'website_stage',
@@ -63,28 +63,6 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
           { label: 'New Website', value: 'new' },
           { label: 'Existing Website', value: 'existing' }
         ]
-      },
-      {
-        name: 'is_indexed',
-        label: 'Indexed by Google?',
-        type: 'tri-state',
-        options: [
-          { label: 'Yes', value: 'yes' },
-          { label: 'No', value: 'no' },
-          { label: 'Unknown', value: 'unknown' }
-        ]
-      },
-      { name: 'monthly_organic_traffic', label: 'Monthly Organic Traffic', type: 'number', placeholder: '0' },
-      {
-        name: 'organic_traffic_trend',
-        label: 'Traffic Trend',
-        type: 'radio',
-        options: [
-          { label: 'Increasing', value: 'increasing' },
-          { label: 'Flat', value: 'flat' },
-          { label: 'Decreasing', value: 'decreasing' },
-          { label: 'Not sure yet', value: '' }
-        ]
       }
     ]
   },
@@ -92,7 +70,7 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
     step: 3,
     eyebrow: 'Technical Signals',
     title: 'Capture crawl and rendering health',
-    description: 'We want the diagnosis to know what search engines can and cannot access.',
+    description: 'Live signals from GSC and PageSpeed will auto-populate the most important technical counts.',
     fields: [
       { name: 'sitemap_url', label: 'Sitemap URL', type: 'text', placeholder: 'https://yourdomain.com/sitemap.xml' },
       {
@@ -102,7 +80,8 @@ export const identifyStepConfigs: Record<IdentifyStepNumber, IdentifyStepConfig>
         placeholder: 'User-agent: *\nDisallow: /admin/'
       },
       { name: 'crawl_errors_count', label: 'Crawl Errors Count', type: 'number', placeholder: '0' },
-      { name: 'core_web_vitals_pass', label: 'Core Web Vitals Pass', type: 'boolean' }
+      { name: 'core_web_vitals_pass', label: 'Core Web Vitals Pass', type: 'boolean' },
+      { name: 'mobile_usability_count', label: 'Mobile Usability', type: 'number', placeholder: '0' }
     ]
   },
   4: {

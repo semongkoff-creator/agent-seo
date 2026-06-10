@@ -1,3 +1,5 @@
+import { FEATURES } from '@/lib/feature-flags';
+
 export type Locale = 'en' | 'id';
 
 export const LOCALE_COOKIE = 'seo-agent-locale';
@@ -107,7 +109,13 @@ export function getAppCopy(locale: Locale) {
         ? 'Pilih project dan lanjutkan wizard Identify. Draft akan tersimpan otomatis di setiap langkah, lalu n8n menganalisis submission dan menyimpan hasil ke Supabase.'
         : 'Pick a project and continue the Identify wizard. Drafts autosave on each step, then n8n analyzes the submission and stores the result in Supabase.',
       flow1: isId ? '1. Pilih project' : '1. Pick a project',
-      flow2: isId ? '2. Isi wizard 6 langkah' : '2. Complete the 6-step wizard',
+      flow2: isId
+        ? FEATURES.wizardExtendedSteps
+          ? '2. Isi wizard 6 langkah'
+          : '2. Isi wizard 3 langkah'
+        : FEATURES.wizardExtendedSteps
+          ? '2. Complete the 6-step wizard'
+          : '2. Complete the 3-step wizard',
       flow3: isId ? '3. Draft tersimpan otomatis' : '3. Drafts autosave as you move',
       flow4: isId ? '4. Submit ke n8n untuk analisis' : '4. Submit to n8n for analysis',
       flow5: isId

@@ -1,27 +1,12 @@
+"use client";
+
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import type { TechnicalErrorRecord } from '@/types/wizard';
+import { formatAffectedUrlLabel } from '@/lib/technical-errors';
+import { HowToFixContent } from './HowToFixContent';
 
-function getRecommendedFix(errorType: string) {
-  const lower = errorType.toLowerCase();
-
-  if (lower.includes('redirect')) {
-    return 'Collapse redirect chains into a single destination and update internal links to the final URL.';
-  }
-
-  if (lower.includes('canonical')) {
-    return 'Align canonical tags with the preferred indexable URL and make sure duplicates point to the same destination.';
-  }
-
-  if (lower.includes('noindex')) {
-    return 'Remove accidental noindex directives from important pages and verify template-level settings.';
-  }
-
-  if (lower.includes('mobile')) {
-    return 'Review responsive breakpoints, tap targets, and viewport handling on the affected templates.';
-  }
-
-  return 'Audit the affected URLs, compare them with the winning templates, and fix the highest-impact pattern first.';
-}
+type TabKey = 'affected_urls' | 'how_to_fix';
 
 export function ErrorDetailModal({
   error,
@@ -30,6 +15,20 @@ export function ErrorDetailModal({
   error: TechnicalErrorRecord | null;
   onClose: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<TabKey>('affected_urls');
+
+  const tabs = useMemo(
+    () => [
+      { key: 'affected_urls' as const, label: 'Affected URLs' },
+      { key: 'how_to_fix' as const, label: 'How to Fix' }
+    ],
+    []
+  );
+
+  useEffect(() => {
+    setActiveTab('affected_urls');
+  }, [error?.id]);
+
   if (!error) {
     return null;
   }
@@ -43,12 +42,10 @@ export function ErrorDetailModal({
         onClick={onClose}
       />
 
-      <div className="relative z-10 w-[min(96vw,960px)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border border-outline-variant bg-surface-container-lowest shadow-2xl sm:max-h-[calc(100vh-4rem)]">
+      <div className="relative z-10 w-[min(96vw,980px)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border border-outline-variant bg-surface-container-lowest shadow-2xl sm:max-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-between border-b border-outline-variant px-5 py-4 md:px-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-              Technical Error Detail
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Technical Error Detail</p>
             <h3 className="mt-1 text-xl font-semibold text-on-surface">{error.errorType}</h3>
           </div>
           <button
@@ -70,36 +67,75 @@ export function ErrorDetailModal({
               <span className="rounded-full bg-surface-container px-3 py-1">{error.count} URLs</span>
             </div>
 
-            <section className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
-              <h4 className="text-sm font-semibold text-on-surface">Affected URLs</h4>
-              <ul className="mt-3 space-y-2 text-sm">
-                {error.affectedUrls.map((url) => (
-                  <li key={url} className="rounded-xl bg-white px-3 py-2 font-mono text-primary">
-                    {url}
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <div className="flex flex-wrap gap-2 border-b border-outline-variant pb-3">
+              {tabs.map((tab) => {
+                const active = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={[
+                      'rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                      active ? 'bg-primary text-on-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                    ].join(' ')}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
 
-            {error.screenshots.length > 0 ? (
-              <section className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
-                <h4 className="text-sm font-semibold text-on-surface">Screenshots</h4>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {error.screenshots.map((url) => (
-                    <img
-                      key={url}
-                      src={url}
-                      alt="Error screenshot"
-                      className="rounded-2xl border border-outline-variant bg-white"
-                    />
-                  ))}
+            {activeTab === 'affected_urls' ? (
+              <section className="space-y-3 rounded-2xl border border-outline-variant bg-surface-container-low p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-semibold text-on-surface">Affected URLs</h4>
+                  <span className="text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                    {error.affectedUrls.length} items
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {error.affectedUrls.length > 0 ? (
+                    error.affectedUrls.map((item) => (
+                      <div key={`${item.url}-${item.reason ?? 'url'}`} className="rounded-2xl border border-outline-variant bg-white p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-mono text-sm text-primary">{item.url}</p>
+                            {item.reason ? <p className="mt-1 text-sm text-on-surface-variant">{item.reason}</p> : null}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                            {typeof item.statusCode === 'number' ? (
+                              <span className="rounded-full bg-surface-container px-2.5 py-1">HTTP {item.statusCode}</span>
+                            ) : null}
+                            {item.detectedAt ? <span className="rounded-full bg-surface-container px-2.5 py-1">{item.detectedAt}</span> : null}
+                          </div>
+                        </div>
+
+                        {item.additionalInfo && Object.keys(item.additionalInfo).length > 0 ? (
+                          <pre className="mt-3 overflow-x-auto rounded-2xl bg-surface-container-low p-3 text-xs text-on-surface-variant">
+                            {JSON.stringify(item.additionalInfo, null, 2)}
+                          </pre>
+                        ) : null}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-outline-variant bg-white p-4 text-sm text-on-surface-variant">
+                      No URL-level details available for this issue.
+                    </div>
+                  )}
                 </div>
               </section>
-            ) : null}
+            ) : (
+              <HowToFixContent errorType={error.errorType} />
+            )}
 
             <section className="rounded-2xl border border-outline-variant bg-surface-container-low p-4">
-              <h4 className="text-sm font-semibold text-on-surface">Recommended fix</h4>
-              <p className="mt-2 text-sm leading-6 text-on-surface-variant">{getRecommendedFix(error.errorType)}</p>
+              <h4 className="text-sm font-semibold text-on-surface">Quick Summary</h4>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                {error.errorType} is affecting {error.count} URL{error.count > 1 ? 's' : ''}.{' '}
+                {error.affectedUrls.length > 0 ? `The first affected URL is ${formatAffectedUrlLabel(error.affectedUrls[0])}.` : ''}
+              </p>
             </section>
           </div>
         </div>

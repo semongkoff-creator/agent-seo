@@ -34,6 +34,8 @@ const identifyAgent = getNode(identify, 'AI Agent');
 identifyAgent.parameters.text = '={{ JSON.stringify({\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  brief: $json.identify_merged,\n  enriched_data: {\n    gsc: $json.gsc_data ?? {},\n    ga4: $json.ga4_data ?? {},\n    technical_errors: $json.technical_errors ?? [],\n    ai_visibility: $json.ai_visibility ?? {}\n  }\n}, null, 2) }}';
 identifyAgent.parameters.options.systemMessage = [
   'You are an SEO diagnostic agent V2. Analyze the website brief plus any auto-fetched signals from GSC, GA4, technical errors, and AI visibility.',
+  'Optional Step 4-6 fields may be missing in fundamentals mode; treat absent arrays as empty and focus the diagnosis on technical issues first.',
+  'Do not crash or change the classification if optional relevance, authority, or conversion data is absent.',
   '',
   'Return ONLY valid JSON (no markdown fences, no prose).',
   '',
@@ -77,6 +79,7 @@ identifyAgent.parameters.options.systemMessage = [
   'SCORING RULES:',
   '- technical_health_score: start at 100 and subtract by severity * occurrences, clamp to 0-100',
   '- ai_visibility_score: weighted average of Gemini 60% and ChatGPT 40%',
+  '- When optional Step 4-6 data is missing, keep keyword_section and business_impact_section concise and grounded in available data only',
   '',
   'CLASSIFICATION:',
   '- technical_bottleneck: technical_health_score < 50',

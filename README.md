@@ -15,10 +15,12 @@ Prototype HTML reference + upcoming Next.js app foundation.
 2. Copy `.env.example` to `.env.local` and fill in the values.
 3. For Supabase, set `DATABASE_URL` and `DIRECT_URL` to your pooler URLs, and fill `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 4. For n8n, set the production workflow URLs. In this repo, `N8N_IDENTIFY_WEBHOOK_URL` is used for identify and `N8N_OBJECTIVE_WEBHOOK_URL` is used for objective. `N8N_WEBHOOK_URL` remains an optional shared fallback, then fill `N8N_WEBHOOK_SECRET` for BE -> n8n signing and `APP_WEBHOOK_SECRET` for n8n -> BE callback verification.
-5. `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are optional. If they are unset, rate limiting falls back to a no-op mode.
-6. Set `APP_URL` to your production domain before deploying, because auth redirects and webhook callbacks use it.
-7. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
-8. Start development with `pnpm dev`.
+5. Set `NEXT_PUBLIC_WIZARD_EXTENDED_STEPS=false` to keep the Identify wizard focused on fundamentals (steps 1-3 only). Flip it to `true` to re-enable the extended 6-step flow.
+6. For DataForSEO crawl runs, set `DATAFORSEO_LOGIN`, `DATAFORSEO_API_PASSWORD`, `DATAFORSEO_MAX_PAGES_PER_AUDIT`, and `DATAFORSEO_MONTHLY_BUDGET_USD`.
+7. `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are optional. If they are unset, rate limiting falls back to a no-op mode.
+8. Set `APP_URL` to your production domain before deploying, because auth redirects and webhook callbacks use it.
+9. Run the prototype HTML by opening `index.html` in a browser, or use the future Next app once pages are added.
+10. Start development with `pnpm dev`.
 
 Admin bootstrap:
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_FULL_NAME` can be set locally for the helper script at `scripts/seed-admin.mjs`.

@@ -2,6 +2,16 @@
 
 ## 2026-06-08
 
+- Hardened Google sync deduplication by deleting previous GSC/GA4 metric rows before inserting fresh sync results.
+- Normalized GA4 engagement rate storage/display to percentage values and corrected bounce rate derivation.
+- Upgraded GSC indexed pages sync to use discovery sampling, URL Inspection fallback, and metadata-rich coverage summaries.
+- Added a cleanup migration for duplicate Google metric rows in Supabase.
+- Aligned Google OAuth and encryption helpers with the Kaitech Vercel env vars (`NEXT_PUBLIC_APP_URL`, `GOOGLE_OAUTH_REDIRECT_URI`, `OAUTH_STATE_SECRET`, `TOKEN_ENCRYPTION_KEY`).
+- Improved Google sync project resolution so Kaitech domain matches are preferred before falling back to the latest project.
+- Added Google OAuth integration for GSC and GA4 with dedicated initiate, callback, disconnect, and refresh routes.
+- Added OAuth connection storage, Google property selection, and real sync endpoints for GSC and GA4.
+- Added Google property cards and selector UI to the Settings page.
+- Updated GSC and GA4 mock readers to prefer real synced data from `gsc_metrics` and `ga4_metrics`.
 - Updated n8n workflow contracts for Phase 5, including V2 diagnosis sections and multi-pillar objective payload support.
 - Added backend support for V2 diagnosis/objective webhook fields and technical error context in objective generation.
 - Updated the shared n8n workflow guide to reflect the V2 diagnosis and objective orchestration flow.

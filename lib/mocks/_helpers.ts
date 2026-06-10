@@ -1,4 +1,4 @@
-import type { GSCMockData, GA4MockData, TechnicalErrorRecord } from '@/types/wizard';
+import type { GSCMockData, GA4MockData, TechnicalErrorRecord, TechnicalErrorUrlDetail } from '@/types/wizard';
 
 export function hashSeed(value: string) {
   let hash = 0;
@@ -19,7 +19,8 @@ export function fallbackGSCData(projectId: string): GSCMockData {
   return {
     indexed,
     total,
-    percentage
+    percentage,
+    source: 'mock'
   };
 }
 
@@ -53,7 +54,8 @@ export function fallbackGA4Data(projectId: string): GA4MockData {
       total: visitorTotal,
       new: newVisitors,
       returning
-    }
+    },
+    source: 'mock'
   };
 }
 
@@ -82,8 +84,20 @@ export function fallbackTechnicalErrors(projectId: string): TechnicalErrorRecord
       severity,
       status,
       affectedUrls: [
-        `https://example.com/page-${index + 1}`,
-        `https://example.com/page-${index + 2}`
+        {
+          url: `https://example.com/page-${index + 1}`,
+          reason: index === 0 ? 'Redirect chain detected' : 'Affected by the issue',
+          statusCode: index === 1 ? 404 : 200,
+          detectedAt: new Date().toISOString(),
+          additionalInfo: { source: 'fallback' }
+        } satisfies TechnicalErrorUrlDetail,
+        {
+          url: `https://example.com/page-${index + 2}`,
+          reason: 'Representative sample URL',
+          statusCode: 200,
+          detectedAt: new Date().toISOString(),
+          additionalInfo: { source: 'fallback' }
+        } satisfies TechnicalErrorUrlDetail
       ],
       screenshots: index === 0 ? [] : [`https://placehold.co/800x450?text=Error+${index + 1}`]
     };

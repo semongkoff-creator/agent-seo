@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HelpCircle, Plus, User } from 'lucide-react';
 import { primaryNavItems } from './nav-data';
+import { LogoutButton } from './LogoutButton';
 import { getAppCopy, type Locale } from '@/lib/i18n';
 
 function isActive(pathname: string, href: string) {
@@ -72,6 +73,9 @@ export function Sidebar({ locale }: { locale: Locale }) {
             <HelpCircle className="h-5 w-5" />
             <span className="text-body-md">{copy.help}</span>
           </Link>
+          <div className="pt-2">
+            <LogoutButton compact />
+          </div>
         </div>
       </div>
     </aside>

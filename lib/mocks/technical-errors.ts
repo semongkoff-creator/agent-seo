@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { isMissingRelationError } from '@/lib/errors';
-import type { TechnicalErrorRecord } from '@/types/wizard';
+import type { TechnicalErrorRecord, TechnicalErrorUrlDetail } from '@/types/wizard';
 import { fallbackTechnicalErrors, parseStringArray, toNumber } from './_helpers';
 
 const severityValues = ['low', 'medium', 'high', 'critical'] as const;
@@ -23,6 +23,34 @@ function toStatus(value: unknown): TechnicalErrorRecord['status'] {
 }
 
 function parseRecord(row: Record<string, unknown>): TechnicalErrorRecord {
+  const affectedUrls = Array.isArray(row.affected_urls)
+    ? row.affected_urls
+        .map((item): TechnicalErrorUrlDetail | null => {
+          if (typeof item === 'string' && item.trim()) {
+            return { url: item };
+          }
+
+          if (!item || typeof item !== 'object') {
+            return null;
+          }
+
+          const record = item as Record<string, unknown>;
+          const url = typeof record.url === 'string' && record.url ? record.url : typeof record.location === 'string' ? record.location : '';
+          if (!url) {
+            return null;
+          }
+
+          return {
+            url,
+            reason: typeof record.reason === 'string' ? record.reason : undefined,
+            statusCode: typeof record.status_code === 'number' ? record.status_code : undefined,
+            detectedAt: typeof record.detected_at === 'string' ? record.detected_at : undefined,
+            additionalInfo: (record.additional_info ?? {}) as Record<string, unknown>
+          };
+        })
+        .filter((item): item is TechnicalErrorUrlDetail => item !== null)
+    : [];
+
   return {
     id: String(row.id ?? ''),
     source: typeof row.source === 'string' && row.source ? row.source : 'Audit',
@@ -30,7 +58,7 @@ function parseRecord(row: Record<string, unknown>): TechnicalErrorRecord {
     count: toNumber(row.error_count, 0),
     severity: toSeverity(row.severity),
     status: toStatus(row.status),
-    affectedUrls: parseStringArray(row.affected_urls),
+    affectedUrls,
     screenshots: parseStringArray(row.screenshots)
   };
 }
@@ -48,9 +76,7 @@ export async function getTechnicalErrors(projectId: string): Promise<TechnicalEr
     }
 
     const rows = (data ?? []) as Array<Record<string, unknown>>;
-    if (rows.length > 0) {
-      return rows.map(parseRecord);
-    }
+    return rows.map(parseRecord);
   } catch (error) {
     if (!isMissingRelationError(error)) {
       return fallbackTechnicalErrors(projectId);

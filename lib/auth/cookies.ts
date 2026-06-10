@@ -2,7 +2,7 @@ const accessCookieName = 'seo-agent-access-token';
 const refreshCookieName = 'seo-agent-refresh-token';
 
 function isSecureCookie() {
-  const appUrl = process.env.APP_URL ?? '';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? '';
   return appUrl.startsWith('https://');
 }
 

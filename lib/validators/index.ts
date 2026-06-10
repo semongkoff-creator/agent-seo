@@ -8,3 +8,5 @@ export * from './dashboard';
 export * from './tasks';
 export * from './webhooks';
 export * from './technical-errors';
+export * from './audits';
+export * from './google-integrations';

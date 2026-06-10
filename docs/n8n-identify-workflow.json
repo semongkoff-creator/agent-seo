@@ -45,10 +45,23 @@
     },
     {
       "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst source = input.identify_merged ?? {};\n\nconst pick = (keys) => keys.reduce((acc, key) => {\n  const value = source[key];\n  if (value !== undefined && value !== null && value !== '') {\n    acc[key] = value;\n  }\n  return acc;\n}, {});\n\nconst brief = {\n  ...pick([\n    'industry',\n    'website_url',\n    'business_name',\n    'target_audience',\n    'target_location',\n    'main_product_or_service',\n    'website_stage',\n    'is_indexed',\n    'indexed_pages',\n    'published_pages',\n    'main_seo_concern',\n    'organic_traffic_trend',\n    'monthly_organic_traffic',\n    'monthly_ctr',\n    'monthly_impressions',\n    'current_ranking_keywords',\n    'domain_rating',\n    'competitor_dr_avg',\n    'referring_domains',\n    'backlink_count',\n    'brand_mentions_estimate',\n    'bounce_rate',\n    'top_landing_pages',\n    'avg_session_duration',\n    'monthly_organic_leads',\n    'monthly_organic_sales',\n    'cta_quality_self_rating',\n    'current_conversion_rate'\n  ]),\n  crawl: {\n    sitemap_url: source.sitemap_url ?? null,\n    robots_txt: source.robots_txt ?? null,\n    crawl_errors_count: Number(source.crawl_errors_count ?? 0),\n    core_web_vitals_pass: Boolean(source.core_web_vitals_pass),\n    mobile_usability_count: Number(source.mobile_usability_count ?? 0),\n    has_redirect_errors: Boolean(source.has_redirect_errors),\n    has_4xx_5xx_errors: Boolean(source.has_4xx_5xx_errors),\n    noindex_issues: Boolean(source.noindex_issues),\n    canonical_issues: Boolean(source.canonical_issues)\n  },\n  relevance: {\n    indexed_pages: Number(source.indexed_pages ?? 0),\n    published_pages: Number(source.published_pages ?? 0),\n    monthly_impressions: Number(source.monthly_impressions ?? 0),\n    monthly_ctr: Number(source.monthly_ctr ?? 0),\n    current_ranking_keywords: Array.isArray(source.current_ranking_keywords) ? source.current_ranking_keywords : []\n  },\n  authority: {\n    domain_rating: Number(source.domain_rating ?? 0),\n    competitor_dr_avg: Number(source.competitor_dr_avg ?? 0),\n    referring_domains: Number(source.referring_domains ?? 0),\n    backlink_count: Number(source.backlink_count ?? 0),\n    brand_mentions_estimate: Number(source.brand_mentions_estimate ?? 0)\n  },\n  conversion: {\n    current_conversion_rate: Number(source.current_conversion_rate ?? 0),\n    monthly_organic_traffic: Number(source.monthly_organic_traffic ?? 0),\n    monthly_organic_leads: Number(source.monthly_organic_leads ?? 0),\n    monthly_organic_sales: Number(source.monthly_organic_sales ?? 0),\n    bounce_rate: Number(source.bounce_rate ?? 0),\n    cta_quality_self_rating: source.cta_quality_self_rating ?? null\n  }\n};\n\nreturn [{\n  json: {\n    job_id: input.job_id,\n    project_id: input.project_id,\n    user_id: input.user_id,\n    diagnosis_id: input.diagnosis_id,\n    action: input.action,\n    mode: 'fundamentals',\n    step_completed: 3,\n    brief\n  }\n}];"
+      },
+      "id": "1d2cb1ef-3f31-4c06-8f13-2e6e7cae91cf",
+      "name": "Prepare AI Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1008
+      ]
+    },
+    {
+      "parameters": {
         "promptType": "define",
-        "text": "={{ JSON.stringify({\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  brief: $json.identify_merged,\n  enriched_data: {\n    gsc: $json.gsc_data ?? {},\n    ga4: $json.ga4_data ?? {},\n    technical_errors: $json.technical_errors ?? [],\n    ai_visibility: $json.ai_visibility ?? {}\n  }\n}, null, 2) }}",
+        "text": "={{ JSON.stringify({\n  job_id: $json.job_id,\n  project_id: $json.project_id,\n  diagnosis_id: $json.diagnosis_id,\n  action: $json.action,\n  mode: $json.mode,\n  step_completed: $json.step_completed,\n  brief: $json.brief\n}, null, 2) }}",
         "options": {
-          "systemMessage": "You are an SEO diagnostic agent V2. Analyze the website brief plus any auto-fetched signals from GSC, GA4, technical errors, and AI visibility.\n\nReturn ONLY valid JSON (no markdown fences, no prose).\n\nREQUIRED JSON SCHEMA:\n{\n  \"primary_problem_type\": \"<enum>\",\n  \"severity\": \"<enum>\",\n  \"confidence_score\": <0-100>,\n  \"diagnosis_summary\": \"<1 sentence>\",\n  \"technical_health_score\": <0-100>,\n  \"ai_visibility_score\": <0-100>,\n  \"technical_section\": {\n    \"summary\": \"<1-2 sentences>\",\n    \"critical_issues\": [\"<issue 1>\", \"<issue 2>\"],\n    \"checklist_priority\": [\"<error_type 1>\", \"<error_type 2>\"]\n  },\n  \"keyword_section\": {\n    \"summary\": \"<1-2 sentences>\",\n    \"top_opportunities\": [{ \"keyword\": \"...\", \"current_position\": 25, \"opportunity\": \"Move to top 10\" }]\n  },\n  \"ai_overview_section\": {\n    \"summary\": \"<1-2 sentences>\",\n    \"gemini_insights\": \"<text>\",\n    \"chatgpt_insights\": \"<text>\",\n    \"recommendation\": \"<action>\"\n  },\n  \"business_impact_section\": {\n    \"summary\": \"<1 sentence>\",\n    \"metrics\": [{ \"label\": \"<metric>\", \"current_value\": \"<value>\", \"potential_value\": \"<value>\", \"gap\": \"<gap>\" }]\n  },\n  \"recommended_next_step\": \"<action>\",\n  \"objective_direction\": \"<enum>\",\n  \"model_used\": \"gpt-4o-mini\"\n}\n\nENUMS (STRICT):\n- primary_problem_type: technical_bottleneck | relevance_gap | authority_deficit | conversion_pitfall | from_scratch | ai_visibility_gap | mixed\n- severity: low | medium | high | critical\n- objective_direction: technical_recovery | qualified_traffic | authority_growth | conversion_improvement | foundation_building | ai_visibility_improvement | mixed\n\nSCORING RULES:\n- technical_health_score: start at 100 and subtract by severity * occurrences, clamp to 0-100\n- ai_visibility_score: weighted average of Gemini 60% and ChatGPT 40%\n\nCLASSIFICATION:\n- technical_bottleneck: technical_health_score < 50\n- ai_visibility_gap: ai_visibility_score < 40\n- relevance_gap: indexed >= 30% but rankings are brand-only\n- authority_deficit: DR gap > 15\n- conversion_pitfall: traffic > 500 and CR < 1%\n- from_scratch: indexed=0 and published=0\n- mixed: 2+ categories strong\n\nKeep warnings and output concise. Do NOT propose objectives or campaign plans."
+          "systemMessage": "You are an SEO diagnostic agent for the Identify flow.\nStep 3 is complete and the brief already contains the final technical signals.\nTreat missing optional fields as absent. Do not invent values, do not assume extra metrics.\nPrioritize technical recovery when crawl errors, rendering issues, or poor Core Web Vitals are present. Use relevance, authority, and conversion only when those fields exist in the brief.\nIf AI visibility data is absent, keep ai_visibility_score conservative and explain the gap briefly.\n\nReturn ONLY valid JSON.\n\nRequired output keys:\nprimary_problem_type, severity, confidence_score, diagnosis_summary, technical_health_score, ai_visibility_score, technical_section, keyword_section, ai_overview_section, business_impact_section, recommended_next_step, objective_direction, model_used\n\nKeep it short, concrete, and directly tied to the brief. Do not propose objectives or campaign plans."
         }
       },
       "id": "ac6f841d-4bf0-4382-af17-7a1642371f65",
@@ -417,6 +430,17 @@
       ]
     },
     "Verify HMAC (DEV)": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Input": {
       "main": [
         [
           {

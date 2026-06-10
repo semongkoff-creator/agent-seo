@@ -56,20 +56,93 @@ function createAuthClient() {
   });
 }
 
+function createAdminAuthClient() {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new AppError('INTEGRATION_ERROR', 'Supabase admin auth is not configured', 502);
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  });
+}
+
+async function findSupabaseAuthUserByEmail(email: string) {
+  const auth = createAdminAuthClient();
+  const { data, error } = await auth.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000
+  });
+
+  if (error) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to list Supabase auth users', 500, { cause: error.message });
+  }
+
+  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+}
+
+async function createSupabaseAuthUser(email: string, password: string, fullName?: string | null) {
+  const auth = createAdminAuthClient();
+  const { data, error } = await auth.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName ?? undefined
+    }
+  });
+
+  if (error) {
+    const existing = await findSupabaseAuthUserByEmail(email);
+    if (existing) {
+      return existing;
+    }
+
+    throw new AppError('INTERNAL_ERROR', 'Failed to create Supabase auth user', 500, { cause: error.message });
+  }
+
+  if (!data.user) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to create Supabase auth user', 500);
+  }
+
+  return data.user;
+}
+
+async function migrateLocalAccountId(oldId: string, nextId: string) {
+  const { error: accountError } = await db.from('auth_accounts').update({ id: nextId }).eq('id', oldId);
+  if (accountError) {
+    throw new AppError('INTERNAL_ERROR', 'Failed to migrate auth account', 500, { cause: accountError.message });
+  }
+
+  await db.from('auth_sessions').update({ auth_account_id: nextId }).eq('auth_account_id', oldId);
+  await db.from('auth_password_resets').update({ auth_account_id: nextId }).eq('auth_account_id', oldId);
+}
+
 async function syncUserProfile(
   userId: string,
   email: string,
   fullName?: string | null,
   avatarUrl?: string | null,
-  role: string = 'member'
+  role: string = 'admin'
 ) {
-  const { error } = await db.from('users').upsert({
+  const profile: Record<string, unknown> = {
     id: userId,
     email,
     full_name: fullName ?? null,
-    avatar_url: avatarUrl ?? null,
-    role
-  });
+    avatar_url: avatarUrl ?? null
+  };
+
+  if (role) {
+    profile.role = role;
+  }
+
+  const { error } = await db.from('users').upsert(profile);
 
   if (error) {
     throw new AppError('INTERNAL_ERROR', 'Failed to sync user profile', 500, { cause: error.message });
@@ -193,7 +266,8 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
     throw new AppError('CONFLICT', 'An account with this email already exists', 409);
   }
 
-  const userId = randomUUID();
+  const supabaseUser = await createSupabaseAuthUser(email, input.password, input.fullName ?? null);
+  const userId = supabaseUser.id;
   const passwordHash = hashPassword(input.password);
 
   const { error: accountError } = await db.from('auth_accounts').insert({
@@ -212,7 +286,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
     throw new AppError('INTERNAL_ERROR', 'Failed to create auth account', 500, { cause: accountError.message });
   }
 
-  await syncUserProfile(userId, email, input.fullName ?? null, null, 'member');
+  await syncUserProfile(userId, email, input.fullName ?? null, null, 'admin');
 
   const session = await createLocalSession(userId);
 
@@ -249,7 +323,22 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     throw new AppError('INTERNAL_ERROR', 'Failed to update login timestamp', 500, { cause: error.message });
   }
 
-  await syncUserProfile(account.id, email, account.full_name ?? null, account.avatar_url ?? null, account.role ?? 'member');
+  try {
+    await syncUserProfile(account.id, email, account.full_name ?? null, account.avatar_url ?? null, 'admin');
+  } catch (error) {
+    const message = error instanceof AppError ? error.details?.cause : null;
+    if (typeof message === 'string' && message.includes('users_id_fkey')) {
+      const supabaseUser = await createSupabaseAuthUser(email, input.password, account.full_name ?? null);
+      if (supabaseUser.id !== account.id) {
+        await migrateLocalAccountId(account.id, supabaseUser.id);
+        account.id = supabaseUser.id;
+      }
+
+      await syncUserProfile(account.id, email, account.full_name ?? null, account.avatar_url ?? null, 'admin');
+    } else {
+      throw error;
+    }
+  }
 
   const session = await createLocalSession(account.id);
 
@@ -291,7 +380,7 @@ export async function refreshSession(input: RefreshInput): Promise<AuthResult> {
     throw new AppError('NOT_FOUND', 'Auth account not found', 404);
   }
 
-  await syncUserProfile(account.id, account.email, account.full_name ?? null, account.avatar_url ?? null, account.role ?? 'member');
+  await syncUserProfile(account.id, account.email, account.full_name ?? null, account.avatar_url ?? null, 'admin');
 
   return {
     userId: account.id,
@@ -326,7 +415,8 @@ export async function getCurrentUserProfile(): Promise<AuthResult> {
     user.id,
     user.email ?? '',
     user.user_metadata?.full_name ?? null,
-    user.user_metadata?.avatar_url ?? null
+    user.user_metadata?.avatar_url ?? null,
+    'admin'
   );
 
   return {
@@ -337,7 +427,7 @@ export async function getCurrentUserProfile(): Promise<AuthResult> {
 
 export async function startGoogleOAuth(_input: OAuthStartInput): Promise<{ url: string }> {
   const auth = createAuthClient();
-  const redirectTo = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/oauth/google/callback`;
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'http://localhost:3000'}/api/auth/oauth/google/callback`;
   const { data, error } = await auth.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -409,7 +499,7 @@ export async function sendForgotPasswordEmail(input: ForgotPasswordInput): Promi
     return {
       ok: true,
       resetToken: reset.token,
-      resetUrl: `${process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(reset.token)}`
+      resetUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(reset.token)}`
     };
   }
 

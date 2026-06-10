@@ -4,9 +4,9 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 
 function getSecretKey(): Buffer {
-  const encodedKey = process.env.ENCRYPTION_KEY;
+  const encodedKey = process.env.TOKEN_ENCRYPTION_KEY ?? process.env.ENCRYPTION_KEY;
   if (!encodedKey) {
-    throw new Error('ENCRYPTION_KEY is required');
+    throw new Error('TOKEN_ENCRYPTION_KEY is required');
   }
 
   const raw = Buffer.from(encodedKey, 'base64');

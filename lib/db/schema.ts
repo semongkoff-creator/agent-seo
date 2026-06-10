@@ -61,6 +61,8 @@ export const taskStatusEnum = pgEnum('task_status', ['pending', 'in_progress', '
 export const integrationProviderEnum = pgEnum('integration_provider', ['gsc', 'ga4', 'ahrefs', 'semrush']);
 export const integrationStatusEnum = pgEnum('integration_status', ['connected', 'disconnected', 'error']);
 export const apiKeyEnvironmentEnum = pgEnum('api_key_environment', ['live', 'test']);
+export const oauthServiceEnum = pgEnum('oauth_service', ['gsc', 'ga4']);
+export const oauthConnectionStatusEnum = pgEnum('oauth_connection_status', ['connected', 'disconnected', 'error']);
 
 export const jobTypeEnum = pgEnum('job_type', ['identify_problem', 'define_objective']);
 export const jobStatusEnum = pgEnum('job_status', ['queued', 'processing', 'completed', 'failed']);
@@ -213,6 +215,10 @@ export const seoDiagnoses = pgTable(
     objectiveDirection: text('objective_direction').notNull(),
     technicalHealthScore: integer('technical_health_score'),
     aiVisibilityScore: integer('ai_visibility_score'),
+    crawlErrorsData: jsonb('crawl_errors_data').notNull().default({}),
+    coreWebVitalsData: jsonb('core_web_vitals_data').notNull().default({}),
+    mobileUsabilityData: jsonb('mobile_usability_data').notNull().default({}),
+    dataSourcesStatus: jsonb('data_sources_status').notNull().default({}),
     technicalSection: jsonb('technical_section').notNull().default({}),
     keywordSection: jsonb('keyword_section').notNull().default({}),
     aiOverviewSection: jsonb('ai_overview_section').notNull().default({}),
@@ -334,6 +340,203 @@ export const integrations = pgTable(
   })
 );
 
+export const psiAudits = pgTable(
+  'psi_audits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    auditedUrl: text('audited_url').notNull(),
+    strategy: text('strategy').notNull().default('mobile'),
+    lcpValue: numeric('lcp_value'),
+    lcpScore: text('lcp_score'),
+    clsValue: numeric('cls_value'),
+    clsScore: text('cls_score'),
+    inpValue: numeric('inp_value'),
+    inpScore: text('inp_score'),
+    performanceScore: integer('performance_score'),
+    accessibilityScore: integer('accessibility_score'),
+    bestPracticesScore: integer('best_practices_score'),
+    seoScore: integer('seo_score'),
+    overallPass: boolean('overall_pass').notNull().default(false),
+    auditsFailed: jsonb('audits_failed').notNull().default([]),
+    rawResponse: jsonb('raw_response').notNull().default({}),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt
+  },
+  (table) => ({
+    projectIdx: index('idx_psi_audits_project').on(table.projectId),
+    fetchedIdx: index('idx_psi_audits_fetched').on(table.fetchedAt)
+  })
+);
+
+export const gscInspectionResults = pgTable(
+  'gsc_inspection_results',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    totalUrlsInspected: integer('total_urls_inspected').notNull().default(0),
+    crawlErrorsTotal: integer('crawl_errors_total').notNull().default(0),
+    crawlErrorsBreakdown: jsonb('crawl_errors_breakdown').notNull().default({}),
+    mobileUsabilityIssuesTotal: integer('mobile_usability_issues_total').notNull().default(0),
+    mobileUsabilityBreakdown: jsonb('mobile_usability_breakdown').notNull().default({}),
+    robotsBlockedCount: integer('robots_blocked_count').notNull().default(0),
+    affectedUrls: jsonb('affected_urls').notNull().default([]),
+    rawResponse: jsonb('raw_response').notNull().default({}),
+    inspectedAt: timestamp('inspected_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt
+  },
+  (table) => ({
+    projectIdx: index('idx_gsc_inspection_project').on(table.projectId),
+    inspectedIdx: index('idx_gsc_inspection_inspected').on(table.inspectedAt)
+  })
+);
+
+export const oauthConnections = pgTable(
+  'oauth_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    service: oauthServiceEnum('service').notNull(),
+    status: oauthConnectionStatusEnum('status').notNull().default('connected'),
+    googleEmail: text('google_email'),
+    googleName: text('google_name'),
+    accessTokenEncrypted: text('access_token_encrypted'),
+    refreshTokenEncrypted: text('refresh_token_encrypted'),
+    tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),
+    scopes: jsonb('scopes').notNull().default([]),
+    connectedResource: jsonb('connected_resource').notNull().default({}),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    createdAt,
+    updatedAt
+  },
+  (table) => ({
+    userServiceUnique: uniqueIndex('oauth_connections_user_service_unique').on(table.userId, table.service),
+    userIdx: index('oauth_connections_user_idx').on(table.userId),
+    statusIdx: index('oauth_connections_status_idx').on(table.status)
+  })
+);
+
+export const gscMetrics = pgTable(
+  'gsc_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    metricType: text('metric_type').notNull(),
+    metricValue: jsonb('metric_value').notNull(),
+    dataSource: text('data_source').notNull().default('mock'),
+    dateRange: text('date_range'),
+    sourceConnectionId: uuid('source_connection_id').references(() => oauthConnections.id, {
+      onDelete: 'set null'
+    }),
+    measuredAt: timestamp('measured_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt
+  },
+  (table) => ({
+    projectIdx: index('gsc_metrics_project_idx').on(table.projectId, table.measuredAt),
+    sourceIdx: index('gsc_metrics_source_idx').on(table.sourceConnectionId, table.measuredAt)
+  })
+);
+
+export const ga4Metrics = pgTable(
+  'ga4_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    metricType: text('metric_type').notNull(),
+    metricValue: jsonb('metric_value').notNull(),
+    dataSource: text('data_source').notNull().default('mock'),
+    dateRange: text('date_range'),
+    sourceConnectionId: uuid('source_connection_id').references(() => oauthConnections.id, {
+      onDelete: 'set null'
+    }),
+    measuredAt: timestamp('measured_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt
+  },
+  (table) => ({
+    projectIdx: index('ga4_metrics_project_idx').on(table.projectId, table.measuredAt),
+    sourceIdx: index('ga4_metrics_source_idx').on(table.sourceConnectionId, table.measuredAt)
+  })
+);
+
+export const technicalErrors = pgTable(
+  'technical_errors',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    diagnosisId: uuid('diagnosis_id').references(() => seoDiagnoses.id, { onDelete: 'set null' }),
+    source: text('source').notNull(),
+    errorType: text('error_type').notNull(),
+    errorCount: integer('error_count').notNull().default(0),
+    affectedUrls: jsonb('affected_urls').notNull().default([]),
+    screenshots: jsonb('screenshots').notNull().default([]),
+    severity: severityEnum('severity').notNull().default('medium'),
+    status: text('status').notNull().default('open'),
+    fixedAt: timestamp('fixed_at', { withTimezone: true }),
+    createdAt
+  },
+  (table) => ({
+    projectIdx: index('technical_errors_project_idx').on(table.projectId, table.createdAt),
+    statusIdx: index('technical_errors_status_idx').on(table.status)
+  })
+);
+
+export const auditTasks = pgTable(
+  'audit_tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull().default('dataforseo'),
+    externalTaskId: text('external_task_id'),
+    targetUrl: text('target_url').notNull(),
+    maxCrawlPages: integer('max_crawl_pages').notNull().default(500),
+    status: text('status').notNull().default('queued'),
+    pagesCrawled: integer('pages_crawled').notNull().default(0),
+    pagesTotal: integer('pages_total'),
+    progressPercent: numeric('progress_percent', { precision: 5, scale: 2 }).notNull().default('0'),
+    totalErrorsFound: integer('total_errors_found').notNull().default(0),
+    errorsBySeverity: jsonb('errors_by_severity').notNull().default({}),
+    estimatedCostUsd: numeric('estimated_cost_usd', { precision: 10, scale: 4 }),
+    actualCostUsd: numeric('actual_cost_usd', { precision: 10, scale: 4 }),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    durationSeconds: integer('duration_seconds'),
+    errorMessage: text('error_message'),
+    retryCount: integer('retry_count').notNull().default(0),
+    rawSummary: jsonb('raw_summary'),
+    createdAt,
+    updatedAt
+  },
+  (table) => ({
+    projectIdx: index('idx_audit_tasks_project').on(table.projectId),
+    statusIdx: index('idx_audit_tasks_status').on(table.status),
+    externalIdx: index('idx_audit_tasks_external_id').on(table.externalTaskId)
+  })
+);
+
 export const apiKeys = pgTable(
   'api_keys',
   {
@@ -427,6 +630,13 @@ export const schema = {
   campaignProgress,
   tasks,
   integrations,
+  oauthConnections,
+  gscMetrics,
+  ga4Metrics,
+  technicalErrors,
+  auditTasks,
+  psiAudits,
+  gscInspectionResults,
   apiKeys,
   jobs,
   usageEvents,

@@ -5,4 +5,7 @@ export * from './integrations';
 export * from './api-keys';
 export * from './dashboard';
 export * from './tasks';
+export * from './google-integrations';
+export * from './technical-signals';
 export * from './webhooks';
+export * from './audits';

@@ -35,6 +35,11 @@ export type GSCMockData = {
   indexed: number;
   total: number;
   percentage: number;
+  source?: 'mock' | 'gsc_api' | 'google_api';
+  measurementMethod?: 'url_inspection' | 'hybrid_estimate' | 'sitemap_fallback';
+  confidence?: 'high' | 'medium' | 'low';
+  sampleSize?: number;
+  details?: Record<string, unknown>;
 };
 
 export type GA4MetricTrend = {
@@ -56,10 +61,19 @@ export type GA4MockData = {
     new: number;
     returning: number;
   };
+  source?: 'mock' | 'ga4_api' | 'google_api';
 };
 
 export type TechnicalErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type TechnicalErrorStatus = 'open' | 'in_progress' | 'fixed';
+
+export type TechnicalErrorUrlDetail = {
+  url: string;
+  reason?: string;
+  statusCode?: number;
+  detectedAt?: string;
+  additionalInfo?: Record<string, unknown>;
+};
 
 export type TechnicalErrorRecord = {
   id: string;
@@ -68,8 +82,14 @@ export type TechnicalErrorRecord = {
   count: number;
   severity: TechnicalErrorSeverity;
   status: TechnicalErrorStatus;
-  affectedUrls: string[];
+  affectedUrls: TechnicalErrorUrlDetail[];
   screenshots: string[];
+  fixGuide?: {
+    summary: string;
+    whyItMatters: string;
+    steps: string[];
+  };
+  rawData?: Record<string, unknown>;
 };
 
 export type KeywordPositionTrend = 'up' | 'down' | 'flat' | 'new';

@@ -5,6 +5,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronRight, FileText, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { ErrorDetailModal } from '@/components/wizard/ErrorDetailModal';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { formatAffectedUrlLabel } from '@/lib/technical-errors';
 import { useTechnicalErrors } from '@/lib/hooks/useTechnicalErrors';
 import type { Locale } from '@/lib/i18n';
 import type { TechnicalErrorRecord, TechnicalErrorStatus } from '@/types/wizard';
@@ -201,9 +202,9 @@ function ChecklistItem({
               {error.count} affected URL{error.count > 1 ? 's' : ''} - Est. effort {getEstimatedEffort(error.severity)}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {error.affectedUrls.slice(0, 2).map((url) => (
-                <span key={url} className="rounded-full bg-surface-container-low px-3 py-1 text-xs text-primary">
-                  {url}
+              {error.affectedUrls.slice(0, 2).map((item) => (
+                <span key={`${error.id}-${item.url}`} className="rounded-full bg-surface-container-low px-3 py-1 text-xs text-primary">
+                  {formatAffectedUrlLabel(item)}
                 </span>
               ))}
             </div>

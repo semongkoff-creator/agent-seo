@@ -4,8 +4,10 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { db } from '@/lib/db/client';
 import { requireUser } from '@/lib/auth/session';
 import { listApiKeys } from '@/lib/services/api-keys';
+import { listGoogleOAuthConnections } from '@/lib/services/google-integrations';
 import { formatWibDate } from '@/lib/time';
 import { CopyApiKeyButton, RevokeApiKeyButton } from './_components/SettingsActions';
+import { GoogleIntegrationSection } from './_components/GoogleIntegrationSection';
 
 function formatDate(value: unknown) {
   if (typeof value !== 'string' || !value) {
@@ -14,15 +16,21 @@ function formatDate(value: unknown) {
   return formatWibDate(value);
 }
 
-export default async function SettingsPage() {
+type SettingsPageProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await requireUser();
-  const [profileResult, apiKeysResult] = await Promise.all([
+  const [profileResult, apiKeysResult, googleConnectionsResult, projectsResult] = await Promise.all([
     db
       .from('users')
       .select('id, email, full_name, avatar_url, role, plan, timezone')
       .eq('id', user.id)
       .maybeSingle(),
-    listApiKeys(user.id)
+    listApiKeys(user.id),
+    listGoogleOAuthConnections(user.id),
+    db.from('projects').select('id, name, website_url').eq('user_id', user.id).order('created_at', { ascending: false })
   ]);
 
   const profile = profileResult.data;
@@ -40,6 +48,12 @@ export default async function SettingsPage() {
       .toUpperCase() || 'AR';
 
   const apiKeys = apiKeysResult.items;
+  const connectionItems = googleConnectionsResult.items;
+  const userProjects = projectsResult.data ?? [];
+  const integrationService =
+    typeof searchParams?.integration === 'string' ? (searchParams.integration as 'gsc' | 'ga4') : null;
+  const integrationAction = typeof searchParams?.action === 'string' ? searchParams.action : null;
+  const integrationError = typeof searchParams?.error === 'string' ? searchParams.error : null;
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -151,6 +165,14 @@ export default async function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <GoogleIntegrationSection
+          connections={connectionItems}
+          projectCount={userProjects.length}
+          initialService={integrationService}
+          initialAction={integrationAction}
+          errorMessage={integrationError}
+        />
 
         <section className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

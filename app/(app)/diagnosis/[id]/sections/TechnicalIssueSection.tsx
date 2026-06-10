@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, FileText, RefreshCcw } from 'lucide-react';
 import { ErrorDetailModal } from '@/components/wizard/ErrorDetailModal';
+import { RunAuditButton } from '@/components/wizard/RunAuditButton';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { formatAffectedUrlLabel } from '@/lib/technical-errors';
 import type { TechnicalErrorRecord, TechnicalErrorStatus } from '@/types/wizard';
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -97,7 +99,8 @@ export function TechnicalIssueSection({
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-start gap-3">
+          <RunAuditButton projectId={projectId} label="Run Audit" />
           <div className="rounded-2xl border border-outline-variant bg-white px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
               Technical Health
@@ -155,9 +158,12 @@ export function TechnicalIssueSection({
                         {error.count} affected URL{error.count > 1 ? 's' : ''}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {error.affectedUrls.slice(0, 2).map((url) => (
-                          <span key={url} className="rounded-full bg-surface-container-low px-3 py-1 text-xs text-primary">
-                            {url}
+                        {error.affectedUrls.slice(0, 2).map((item) => (
+                          <span
+                            key={`${error.id}-${item.url}`}
+                            className="rounded-full bg-surface-container-low px-3 py-1 text-xs text-primary"
+                          >
+                            {formatAffectedUrlLabel(item)}
                           </span>
                         ))}
                       </div>

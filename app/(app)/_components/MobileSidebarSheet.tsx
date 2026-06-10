@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { primaryNavItems } from './nav-data';
+import { LogoutButton } from './LogoutButton';
 import { getAppCopy, type Locale } from '@/lib/i18n';
 
 function isActive(pathname: string, href: string) {
@@ -83,6 +84,10 @@ export function MobileSidebarSheet({ locale }: { locale: Locale }) {
                 );
               })}
             </nav>
+
+            <div className="mt-auto border-t border-outline-variant pt-4">
+              <LogoutButton compact onLoggedOut={() => setOpen(false)} />
+            </div>
           </aside>
         </div>
       ) : null}

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Activity } from 'lucide-react';
+import { formatPercentValue } from '@/lib/formatters/percent';
 import type { GA4MockData, KeywordOwningRecord } from '@/types/wizard';
 
 function MetricCard({
@@ -96,9 +97,9 @@ export function BusinessImpactSection({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Session" value={ga4.session.value.toLocaleString()} subtitle={`${ga4.session.trendPct}% vs 30d`} />
           <MetricCard label="Page View" value={ga4.pageView.value.toLocaleString()} subtitle={`${ga4.pageView.trendPct}% vs 30d`} />
-          <MetricCard label="Engagement Rate" value={`${ga4.engagementRate.value}%`} subtitle={`Benchmark ${ga4.engagementRate.benchmark}%`} />
-          <MetricCard label="Bounce Rate" value={`${bounceRate}%`} subtitle="Derived from GA4 mock data" />
-          <MetricCard label="Conversion Rate" value={`${conversionRate}%`} subtitle="Organic conversion proxy" />
+          <MetricCard label="Engagement Rate" value={formatPercentValue(ga4.engagementRate.value)} subtitle={`Benchmark ${ga4.engagementRate.benchmark}%`} />
+          <MetricCard label="Bounce Rate" value={formatPercentValue(bounceRate)} subtitle="Derived from GA4 live data" />
+          <MetricCard label="Conversion Rate" value={formatPercentValue(conversionRate)} subtitle="Organic conversion proxy" />
         </div>
       </div>
 

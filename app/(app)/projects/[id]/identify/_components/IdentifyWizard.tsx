@@ -15,10 +15,15 @@ import {
   Sparkles,
   TerminalSquare
 } from 'lucide-react';
+import { CoreWebVitalsCard } from '@/components/wizard/CoreWebVitalsCard';
+import { CrawlErrorsCard } from '@/components/wizard/CrawlErrorsCard';
 import { GA4MetricsCard } from '@/components/wizard/GA4MetricsCard';
 import { ErrorCardsGrid } from '@/components/wizard/ErrorCardsGrid';
 import { ErrorDetailModal } from '@/components/wizard/ErrorDetailModal';
 import { GSCConnectionStatus } from '@/components/wizard/GSCConnectionStatus';
+import { MobileUsabilityCard } from '@/components/wizard/MobileUsabilityCard';
+import { RunAuditButton } from '@/components/wizard/RunAuditButton';
+import { getFinalWizardStep, getVisibleWizardSteps } from '@/lib/feature-flags';
 import type { GA4MockData, GSCMockData, TechnicalErrorRecord } from '@/types/wizard';
 import {
   buildStepState,
@@ -57,6 +62,17 @@ function buildDerivedUrl(projectUrl: string, path: '/sitemap.xml' | '/robots.txt
   } catch {
     return `https://yourdomain.com${path}`;
   }
+}
+
+function buildAutoStepTwoPayload(gscData: GSCMockData, ga4Data: GA4MockData) {
+  return {
+    is_indexed: Boolean(gscData.indexed > 0),
+    indexed_pages: Math.max(0, Math.round(gscData.indexed)),
+    published_pages: Math.max(0, Math.round(gscData.total)),
+    monthly_organic_traffic: Math.max(0, Math.round(ga4Data.session.value)),
+    organic_traffic_trend:
+      ga4Data.session.trendPct > 0 ? 'increasing' : ga4Data.session.trendPct < 0 ? 'decreasing' : 'flat'
+  };
 }
 
 function optionHint(value: string) {
@@ -201,6 +217,93 @@ function BooleanField({
   );
 }
 
+function StepField({
+  field,
+  value,
+  onChange
+}: {
+  field: (typeof identifyStepConfigs)[IdentifyStepNumber]['fields'][number];
+  value: unknown;
+  onChange: (next: unknown) => void;
+}) {
+  const commonLabel = (
+    <>
+      <div className="text-sm font-semibold text-on-surface">{field.label}</div>
+      {field.help ? <p className="mt-1 text-xs leading-5 text-on-surface-variant">{field.help}</p> : null}
+    </>
+  );
+
+  if (field.type === 'boolean') {
+    return (
+      <BooleanField
+        label={field.label}
+        value={Boolean(value)}
+        onChange={(next) => onChange(next)}
+      />
+    );
+  }
+
+  if (field.type === 'radio') {
+    return (
+      <div className="rounded-2xl border border-outline-variant bg-white p-4">
+        {commonLabel}
+        <div className="mt-3">
+          <SegmentedControl
+            value={typeof value === 'string' ? value : ''}
+            options={field.options ?? []}
+            onChange={onChange}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (field.type === 'tags') {
+    return (
+      <div className="rounded-2xl border border-outline-variant bg-white p-4">
+        {commonLabel}
+        <div className="mt-3">
+          <TagInput
+            values={Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : parseTags(value)}
+            onChange={onChange}
+            placeholder={field.placeholder}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <label className="rounded-2xl border border-outline-variant bg-white p-4">
+        {commonLabel}
+        <textarea
+          value={typeof value === 'string' ? value : ''}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={field.placeholder}
+          className="mt-3 min-h-28 w-full rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+      </label>
+    );
+  }
+
+  return (
+    <label className="rounded-2xl border border-outline-variant bg-white p-4">
+      {commonLabel}
+      <input
+        type={field.type === 'number' ? 'number' : 'text'}
+        value={typeof value === 'number' ? String(value) : typeof value === 'string' ? value : ''}
+        onChange={(event) => {
+          const next = field.type === 'number' ? Number(event.target.value) : event.target.value;
+          onChange(Number.isFinite(next as number) || field.type !== 'number' ? next : '');
+        }}
+        placeholder={field.placeholder}
+        className="mt-3 min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+      />
+    </label>
+  );
+}
+
 export function IdentifyWizard({
   projectId,
   projectName,
@@ -230,8 +333,9 @@ export function IdentifyWizard({
   const [error, setError] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
   const hasMounted = useRef(false);
-  const isFromScratch = String(initialDrafts.website_stage ?? stepData.website_stage ?? '') === 'from_scratch';
-  const totalSteps = isFromScratch ? 2 : 6;
+  const visibleSteps = useMemo(() => getVisibleWizardSteps(), []);
+  const totalSteps = visibleSteps.length;
+  const finalStep = useMemo(() => getFinalWizardStep(), []);
 
   useEffect(() => {
     setFormState(stepData);
@@ -257,13 +361,17 @@ export function IdentifyWizard({
     setError(null);
 
     try {
+      const autoStepTwoPayload = currentStep === 2 ? buildAutoStepTwoPayload(gscData, ga4Data) : {};
       const response = await fetch(`/api/projects/${projectId}/identify/step/${currentStep}`, {
         method: 'PUT',
         headers: {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          payload: serializeStepState(currentStep, formState)
+          payload: {
+            ...serializeStepState(currentStep, formState),
+            ...autoStepTwoPayload
+          }
         })
       });
 
@@ -277,7 +385,7 @@ export function IdentifyWizard({
     } finally {
       setSaving(false);
     }
-  }, [currentStep, formState, projectId]);
+  }, [currentStep, formState, ga4Data, gscData, projectId]);
 
   useEffect(() => {
     if (!hasMounted.current) {
@@ -307,7 +415,7 @@ export function IdentifyWizard({
     try {
       await persistDraft();
 
-      if (currentStep < totalSteps) {
+      if (currentStep < finalStep) {
         router.push(`/projects/${projectId}/identify/step/${currentStep + 1}`);
         return;
       }
@@ -335,8 +443,8 @@ export function IdentifyWizard({
     router.push('/dashboard');
   }
 
-  const stepProgress = identifyStepOrder.filter((step) => step <= totalSteps);
-  const currentIndex = stepProgress.indexOf(currentStep) + 1;
+  const stepProgress = identifyStepOrder.filter((step) => visibleSteps.includes(step));
+  const currentIndex = Math.max(1, stepProgress.indexOf(currentStep) + 1);
 
   const currentValues = formState;
   const selectedError = technicalErrors.find((item) => item.id === selectedErrorId) ?? null;
@@ -474,251 +582,187 @@ export function IdentifyWizard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {config.fields.map((field) => {
-                if (currentStep === 3 && field.name === 'sitemap_url') {
-                  const sitemapUrl = String(currentValues[field.name] ?? '');
-                  return (
-                    <div key={field.name} className="md:col-span-2 rounded-2xl border border-outline-variant bg-white p-4">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                            Sitemap URL
-                          </div>
-                          <p className="mt-1 text-sm text-on-surface-variant">
-                            Auto mode keeps this synchronized with the website domain.
-                          </p>
+            {currentStep === 3 ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <div className="rounded-[24px] border border-outline-variant bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                          Sitemap URL
                         </div>
-                        <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAutoValue('sitemap_url', buildDerivedUrl(projectUrl, '/sitemap.xml'), setSitemapMode);
-                            }}
-                            className={cn(
-                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                              sitemapMode === 'auto'
-                                ? 'bg-primary text-on-primary'
-                                : 'text-on-surface-variant hover:bg-white'
-                            )}
-                          >
-                            Auto-detected
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSitemapMode('manual')}
-                            className={cn(
-                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                              sitemapMode === 'manual'
-                                ? 'bg-primary text-on-primary'
-                                : 'text-on-surface-variant hover:bg-white'
-                            )}
-                          >
-                            Edit manually
-                          </button>
-                        </div>
-                      </div>
-                      <input
-                        type="text"
-                        value={sitemapMode === 'auto' ? buildDerivedUrl(projectUrl, '/sitemap.xml') : sitemapUrl}
-                        onChange={(event) => {
-                          updateField(field.name, event.target.value);
-                          setSitemapMode('manual');
-                        }}
-                        disabled={sitemapMode === 'auto'}
-                        placeholder="https://yourdomain.com/sitemap.xml"
-                        className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
-                      />
-                      {sitemapMode === 'auto' ? (
-                        <p className="mt-2 text-xs text-on-surface-variant">
-                          The system will crawl your sitemap automatically from the website URL.
+                        <p className="mt-1 text-sm text-on-surface-variant">
+                          Auto mode keeps this synchronized with the website domain.
                         </p>
-                      ) : null}
-                    </div>
-                  );
-                }
-
-                if (currentStep === 3 && field.name === 'robots_txt') {
-                  const robotsTxt = String(currentValues[field.name] ?? '');
-                  return (
-                    <div key={field.name} className="md:col-span-2 rounded-2xl border border-outline-variant bg-white p-4">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                            robots.txt
-                          </div>
-                          <p className="mt-1 text-sm text-on-surface-variant">
-                            Auto mode keeps this synchronized with the website domain.
-                          </p>
-                        </div>
-                        <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAutoValue('robots_txt', buildDerivedUrl(projectUrl, '/robots.txt'), setRobotsMode);
-                            }}
-                            className={cn(
-                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                              robotsMode === 'auto'
-                                ? 'bg-primary text-on-primary'
-                                : 'text-on-surface-variant hover:bg-white'
-                            )}
-                          >
-                            Auto-detected
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRobotsMode('manual')}
-                            className={cn(
-                              'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                              robotsMode === 'manual'
-                                ? 'bg-primary text-on-primary'
-                                : 'text-on-surface-variant hover:bg-white'
-                            )}
-                          >
-                            Edit manually
-                          </button>
-                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={robotsMode === 'auto' ? buildDerivedUrl(projectUrl, '/robots.txt') : robotsTxt}
-                        onChange={(event) => {
-                          updateField(field.name, event.target.value);
-                          setRobotsMode('manual');
-                        }}
-                        disabled={robotsMode === 'auto'}
-                        placeholder="https://yourdomain.com/robots.txt"
-                        className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
-                      />
-                      {robotsMode === 'auto' ? (
-                        <p className="mt-2 text-xs text-on-surface-variant">
-                          The system will crawl your robots file automatically from the website URL.
-                        </p>
-                      ) : null}
-                    </div>
-                  );
-                }
-
-                if (field.type === 'textarea') {
-                  return (
-                    <label key={field.name} className="md:col-span-2">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                        {field.label}
-                      </span>
-                      <textarea
-                        rows={4}
-                        value={String(currentValues[field.name] ?? '')}
-                        onChange={(event) => updateField(field.name, event.target.value)}
-                        placeholder={field.placeholder}
-                        className="min-h-28 w-full rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </label>
-                  );
-                }
-
-                if (field.type === 'number') {
-                  return (
-                    <label key={field.name} className="flex flex-col gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                        {field.label}
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={String(currentValues[field.name] ?? '')}
-                        onChange={(event) => updateField(field.name, event.target.value)}
-                        placeholder={field.placeholder}
-                        className="min-h-12 rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    </label>
-                  );
-                }
-
-                if (field.type === 'tags') {
-                  return (
-                    <div key={field.name} className="md:col-span-2">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                          {field.label}
-                        </span>
-                        <span className="text-xs text-on-surface-variant">
-                          {parseTags(currentValues[field.name]).length > 0
-                            ? `${parseTags(currentValues[field.name]).length} items`
-                            : '0 items'}
-                        </span>
+                      <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAutoValue('sitemap_url', buildDerivedUrl(projectUrl, '/sitemap.xml'), setSitemapMode);
+                          }}
+                          className={cn(
+                            'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                            sitemapMode === 'auto'
+                              ? 'bg-primary text-on-primary'
+                              : 'text-on-surface-variant hover:bg-white'
+                          )}
+                        >
+                          Auto-detected
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSitemapMode('manual')}
+                          className={cn(
+                            'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                            sitemapMode === 'manual'
+                              ? 'bg-primary text-on-primary'
+                              : 'text-on-surface-variant hover:bg-white'
+                          )}
+                        >
+                          Edit manually
+                        </button>
                       </div>
-                      <TagInput
-                        values={parseTags(currentValues[field.name])}
-                        onChange={(next) => updateField(field.name, next)}
-                        placeholder={field.placeholder}
-                      />
                     </div>
-                  );
-                }
-
-                if (field.type === 'boolean') {
-                  return (
-                    <BooleanField
-                      key={field.name}
-                      label={field.label}
-                      value={Boolean(currentValues[field.name])}
-                      onChange={(next) => updateField(field.name, next)}
+                    <input
+                      type="text"
+                      value={sitemapMode === 'auto' ? buildDerivedUrl(projectUrl, '/sitemap.xml') : String(currentValues.sitemap_url ?? '')}
+                      onChange={(event) => {
+                        updateField('sitemap_url', event.target.value);
+                        setSitemapMode('manual');
+                      }}
+                      disabled={sitemapMode === 'auto'}
+                      placeholder="https://yourdomain.com/sitemap.xml"
+                      className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
                     />
-                  );
-                }
-
-                if (field.type === 'tri-state') {
-                  return (
-                    <div key={field.name} className="md:col-span-2">
-                      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                        {field.label}
-                      </div>
-                      <SegmentedControl
-                        value={String(currentValues[field.name] ?? 'unknown')}
-                        options={field.options ?? []}
-                        onChange={(next) => updateField(field.name, next)}
-                      />
-                    </div>
-                  );
-                }
-
-                return (
-                  <div key={field.name} className={field.type === 'radio' ? 'md:col-span-2' : ''}>
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-                      {field.label}
-                    </div>
-                    {field.type === 'radio' ? (
-                      <SegmentedControl
-                        value={String(currentValues[field.name] ?? '')}
-                        options={field.options ?? []}
-                        onChange={(next) => updateField(field.name, next)}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={String(currentValues[field.name] ?? '')}
-                        onChange={(event) => updateField(field.name, event.target.value)}
-                        placeholder={field.placeholder}
-                        className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                    )}
+                    {sitemapMode === 'auto' ? (
+                      <p className="mt-2 text-xs text-on-surface-variant">
+                        The system will crawl your sitemap automatically from the website URL.
+                      </p>
+                    ) : null}
                   </div>
-                );
-              })}
-            </div>
 
-            {currentStep === 2 ? (
-              <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <GSCConnectionStatus data={gscData} />
-                <GA4MetricsCard data={ga4Data} />
+                  <div className="rounded-[24px] border border-outline-variant bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+                          robots.txt
+                        </div>
+                        <p className="mt-1 text-sm text-on-surface-variant">
+                          Auto mode keeps this synchronized with the website domain.
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-2xl border border-outline-variant bg-surface-container-low p-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAutoValue('robots_txt', buildDerivedUrl(projectUrl, '/robots.txt'), setRobotsMode);
+                          }}
+                          className={cn(
+                            'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                            robotsMode === 'auto'
+                              ? 'bg-primary text-on-primary'
+                              : 'text-on-surface-variant hover:bg-white'
+                          )}
+                        >
+                          Auto-detected
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRobotsMode('manual')}
+                          className={cn(
+                            'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                            robotsMode === 'manual'
+                              ? 'bg-primary text-on-primary'
+                              : 'text-on-surface-variant hover:bg-white'
+                          )}
+                        >
+                          Edit manually
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={robotsMode === 'auto' ? buildDerivedUrl(projectUrl, '/robots.txt') : String(currentValues.robots_txt ?? '')}
+                      onChange={(event) => {
+                        updateField('robots_txt', event.target.value);
+                        setRobotsMode('manual');
+                      }}
+                      disabled={robotsMode === 'auto'}
+                      placeholder="https://yourdomain.com/robots.txt"
+                      className="min-h-12 w-full rounded-2xl border border-outline-variant bg-white px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low"
+                    />
+                    {robotsMode === 'auto' ? (
+                      <p className="mt-2 text-xs text-on-surface-variant">
+                        The system will crawl your robots file automatically from the website URL.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                  <div className="h-full">
+                    <CrawlErrorsCard
+                      projectId={projectId}
+                      value={Number(currentValues.crawl_errors_count ?? 0)}
+                      onChange={(next) => updateField('crawl_errors_count', next)}
+                    />
+                  </div>
+                  <div className="h-full">
+                    <CoreWebVitalsCard
+                      projectId={projectId}
+                      value={Boolean(currentValues.core_web_vitals_pass)}
+                      onChange={(next) => updateField('core_web_vitals_pass', next)}
+                    />
+                  </div>
+                  <div className="h-full xl:col-span-2">
+                    <MobileUsabilityCard
+                      projectId={projectId}
+                      value={Number(currentValues.mobile_usability_count ?? 0)}
+                      onChange={(next) => updateField('mobile_usability_count', next)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-on-surface-variant">Real Audit</p>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      Replace the mock technical signals with a live DataForSEO crawl for this project.
+                    </p>
+                  </div>
+                  <RunAuditButton projectId={projectId} label="Run Audit" />
+                </div>
+
+                <ErrorCardsGrid errors={technicalErrors} onSelect={(item) => setSelectedErrorId(item.id)} />
+                <ErrorDetailModal error={selectedError} onClose={() => setSelectedErrorId(null)} />
               </div>
             ) : null}
 
-            {currentStep === 3 ? (
+            {currentStep !== 2 && currentStep !== 3 ? (
               <div className="mt-5 space-y-4">
-                <ErrorCardsGrid errors={technicalErrors} onSelect={(item) => setSelectedErrorId(item.id)} />
-                <ErrorDetailModal error={selectedError} onClose={() => setSelectedErrorId(null)} />
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {config.fields.map((field) => (
+                    <StepField
+                      key={field.name}
+                      field={field}
+                      value={currentValues[field.name]}
+                      onChange={(next) => updateField(field.name, next)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {currentStep === 2 ? (
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+                  Live signals are pulled automatically from connected Google accounts. You only need to confirm the website stage.
+                </div>
+                <div className="space-y-4">
+                  <GSCConnectionStatus data={gscData} />
+                  <GA4MetricsCard data={ga4Data} />
+                </div>
               </div>
             ) : null}
 
@@ -759,7 +803,7 @@ export function IdentifyWizard({
                   onClick={handleContinue}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-on-primary shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {currentStep === totalSteps ? 'Submit & Analyze' : 'Continue'}
+                  {currentStep === finalStep ? 'Generate Diagnosis' : 'Continue'}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -783,7 +827,7 @@ export function IdentifyWizard({
                 </p>
                 <ol className="mt-3 space-y-2">
                   <li>1. Draft autosaves to Supabase</li>
-                  <li>2. Final submit creates diagnosis + job</li>
+                  <li>2. Final submit at Step 3 creates diagnosis + job</li>
                   <li>3. n8n runs in the background</li>
                   <li>4. Results are written to Supabase and the diagnosis page reads them</li>
                 </ol>
@@ -813,7 +857,7 @@ export function IdentifyWizard({
           <summary className="cursor-pointer text-sm font-semibold text-on-surface">Help</summary>
           <div className="mt-3 space-y-3 text-sm leading-6 text-on-surface-variant">
             <p>The wizard auto-saves every second, so you can navigate across steps without losing data.</p>
-            <p>On from-scratch projects, the flow shortens to the first two steps.</p>
+            <p>In fundamentals mode, the flow stays within the first three steps and submits on Step 3.</p>
           </div>
         </details>
 
@@ -835,7 +879,7 @@ export function IdentifyWizard({
                 onClick={handleContinue}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {currentStep === totalSteps ? 'Submit' : 'Continue'}
+                {currentStep === finalStep ? 'Generate Diagnosis' : 'Continue'}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

@@ -6,6 +6,9 @@ alter table if exists public.seo_objectives enable row level security;
 alter table if exists public.campaign_progress enable row level security;
 alter table if exists public.tasks enable row level security;
 alter table if exists public.integrations enable row level security;
+alter table if exists public.oauth_connections enable row level security;
+alter table if exists public.gsc_metrics enable row level security;
+alter table if exists public.ga4_metrics enable row level security;
 alter table if exists public.api_keys enable row level security;
 alter table if exists public.jobs enable row level security;
 alter table if exists public.usage_events enable row level security;
@@ -115,6 +118,47 @@ create policy "Integrations visible to owner"
   for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+drop policy if exists "Users manage own oauth connections" on public.oauth_connections;
+create policy "Users manage own oauth connections"
+  on public.oauth_connections
+  for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "Users see own GSC metrics" on public.gsc_metrics;
+create policy "Users see own GSC metrics"
+  on public.gsc_metrics
+  for all
+  using (
+    exists (
+      select 1 from public.projects p
+      where p.id = gsc_metrics.project_id and p.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.projects p
+      where p.id = gsc_metrics.project_id and p.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Users see own GA4 metrics" on public.ga4_metrics;
+create policy "Users see own GA4 metrics"
+  on public.ga4_metrics
+  for all
+  using (
+    exists (
+      select 1 from public.projects p
+      where p.id = ga4_metrics.project_id and p.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.projects p
+      where p.id = ga4_metrics.project_id and p.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "Api keys visible to owner" on public.api_keys;
 create policy "Api keys visible to owner"

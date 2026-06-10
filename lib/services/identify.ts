@@ -2,6 +2,9 @@ import { db } from '@/lib/db/client';
 import { AppError } from '@/lib/errors';
 import { buildIdentifyWorkflowPayload } from '@/lib/n8n/contracts';
 import { triggerJob } from '@/lib/n8n/client';
+import { getGA4MockData } from '@/lib/mocks/ga4';
+import { getGSCMockData } from '@/lib/mocks/gsc';
+import { getLatestTechnicalSignals } from '@/lib/services/technical-signals';
 import type { IdentifyStepDraftInput, IdentifyStepNumber } from '@/lib/validators/identify';
 
 function sanitizeTrafficTrend(value: unknown) {
@@ -63,6 +66,34 @@ function notFound(message: string) {
 
 function conflict(message: string) {
   throw new AppError('CONFLICT', message, 409);
+}
+
+async function loadAutoIdentifySignals(projectId: string) {
+  const [gscData, ga4Data, technicalSignals] = await Promise.all([
+    getGSCMockData(projectId),
+    getGA4MockData(projectId),
+    getLatestTechnicalSignals(projectId)
+  ]);
+
+  return {
+    is_indexed: Boolean(gscData.indexed > 0),
+    indexed_pages: Math.max(0, Math.round(gscData.indexed)),
+    published_pages: Math.max(0, Math.round(gscData.total)),
+    monthly_organic_traffic: Math.max(0, Math.round(ga4Data.session.value)),
+    organic_traffic_trend:
+      ga4Data.session.trendPct > 0 ? 'increasing' : ga4Data.session.trendPct < 0 ? 'decreasing' : 'flat',
+    crawl_errors_count: technicalSignals.crawl_errors_count,
+    core_web_vitals_pass: technicalSignals.core_web_vitals_pass,
+    mobile_usability_count: technicalSignals.mobile_usability_count,
+    crawl_errors_data: technicalSignals.technical_signals.gsc ?? {},
+    core_web_vitals_data: technicalSignals.technical_signals.psi ?? {},
+    mobile_usability_data: technicalSignals.technical_signals.gsc ?? {},
+    data_sources_status: {
+      gsc: Boolean(technicalSignals.technical_signals.gsc),
+      psi: Boolean(technicalSignals.technical_signals.psi),
+      dataforseo: true
+    }
+  };
 }
 
 export async function getIdentifyDraft(userId: string, projectId: string) {
@@ -193,7 +224,17 @@ export async function submitIdentify(userId: string, projectId: string) {
     Object.assign(acc, row.payload ?? {});
     return acc;
   }, {});
-  const sanitizedMergedPayload = sanitizeIdentifyPayload(mergedPayload);
+  const autoSignals = await loadAutoIdentifySignals(projectId);
+  const sanitizedMergedPayload = sanitizeIdentifyPayload({
+    ...mergedPayload,
+    ...autoSignals
+  });
+  const technicalSignalsData = {
+    crawl_errors_data: sanitizedMergedPayload.crawl_errors_data ?? {},
+    core_web_vitals_data: sanitizedMergedPayload.core_web_vitals_data ?? {},
+    mobile_usability_data: sanitizedMergedPayload.mobile_usability_data ?? {},
+    data_sources_status: sanitizedMergedPayload.data_sources_status ?? {}
+  };
 
   const structuredDrafts = drafts.map((row) => ({
     id: row.id,
@@ -235,6 +276,10 @@ export async function submitIdentify(userId: string, projectId: string) {
       campaign_readiness: 'not_ready',
       recommended_next_step: 'Wait for diagnosis',
       objective_direction: 'mixed',
+      crawl_errors_data: technicalSignalsData.crawl_errors_data,
+      core_web_vitals_data: technicalSignalsData.core_web_vitals_data,
+      mobile_usability_data: technicalSignalsData.mobile_usability_data,
+      data_sources_status: technicalSignalsData.data_sources_status,
       not_recommended_actions: [],
       warnings: [],
       raw_llm_output: {},
